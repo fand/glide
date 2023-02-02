@@ -1,14 +1,17 @@
 import "./style.css";
 import { marked } from "marked";
+import frontmatter from "front-matter";
 
 import hljs from "highlight.js";
 import "highlight.js/styles/dark.css";
 
 async function init() {
-  let el = document.querySelector("#app")!;
+  const el = document.querySelector("#app")!;
 
-  let md = await fetch("/page1.md").then((r) => r.text());
-  el.innerHTML = marked(md, {
+  const md = await fetch("/page1.md").then((r) => r.text());
+  const fm = frontmatter(md);
+
+  el.innerHTML = marked(fm.body, {
     gfm: true,
     highlight: (code, lang) => {
       const language = hljs.getLanguage(lang) ? lang : "plaintext";
