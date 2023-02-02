@@ -1,4 +1,5 @@
-import { join } from "path";
+import { join } from "node:path";
+import fs from "node:fs";
 import { app, BrowserWindow } from "electron";
 import { globalShortcut } from "electron";
 
@@ -8,7 +9,9 @@ process.env.PUBLIC = app.isPackaged
   ? process.env.DIST
   : join(process.env.DIST, "../public");
 
-const PAGE_COUNT = 5;
+const PAGE_COUNT = fs
+  .readdirSync(join(__dirname, "../../public"))
+  .filter((f) => f.startsWith("page-")).length;
 
 type State = {
   page: number;
