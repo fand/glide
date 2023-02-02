@@ -2,34 +2,16 @@ use std::ptr::{null, null_mut};
 
 use block::ConcreteBlock;
 use cacao::{
-    button::Button,
     core_graphics::display::{CGPoint, CGRect, CGSize},
     foundation::{id, NSInteger, NSString},
-    layout::{Layout, LayoutConstraint},
-    macos::{
-        window::{Window, WindowConfig},
-        App, AppDelegate,
-    },
-    view::{View, ViewDelegate},
 };
 use objc::{
     declare::ClassDecl,
-    runtime::{Class, Object, Sel},
+    runtime::{Object, Sel},
 };
-use once_cell::sync::{Lazy, OnceCell};
 
 #[macro_use]
 extern crate objc;
-
-static CAPTURE_DELEGATE0: OnceCell<&'static Class> = OnceCell::new();
-static CAPTURE_DELEGATE1: OnceCell<&'static Class> = OnceCell::new();
-
-struct Grabber {
-    instance_id: u32,
-}
-
-unsafe impl Sync for Grabber {}
-unsafe impl Send for Grabber {}
 
 fn obj_to_string(ptr: *mut Object, default: &str) -> String {
     if ptr.is_null() {
@@ -58,8 +40,36 @@ fn filter_windows(windows: id) -> id {
     out
 }
 
+struct Grabber {
+    instance_id: u32,
+}
+
+unsafe impl Sync for Grabber {}
+unsafe impl Send for Grabber {}
+
 impl Grabber {
     fn new(instance_id: u32) -> Grabber {
+        let class_name = format!("ScreenCaptureDelegate{}", instance_id);
+
+        let cb = if instance_id == 0 {
+            capture_stream0
+        } else {
+            capture_stream1
+        };
+
+        // Define class per instance.
+        // TODO: DRY
+        {
+            let mut decl = ClassDecl::new(&class_name, class!(NSObject)).unwrap();
+            unsafe {
+                decl.add_method(
+                    sel!(stream:didOutputSampleBuffer:ofType:),
+                    cb as extern "C" fn(&Object, _, id, id, NSInteger),
+                );
+            }
+            decl.register();
+        }
+
         Self { instance_id }
     }
 
@@ -72,32 +82,6 @@ impl Grabber {
         };
 
         let block = ConcreteBlock::new(move |shareable_content: id, _err: id| {
-            if instance_id == 0 {
-                CAPTURE_DELEGATE0.get_or_init(|| {
-                    let mut decl =
-                        ClassDecl::new("ScreenCaptureDelegate0", class!(NSObject)).unwrap();
-                    unsafe {
-                        decl.add_method(
-                            sel!(stream:didOutputSampleBuffer:ofType:),
-                            capture_stream0 as extern "C" fn(&Object, _, id, id, NSInteger),
-                        );
-                    }
-                    decl.register()
-                });
-            } else {
-                CAPTURE_DELEGATE1.get_or_init(|| {
-                    let mut decl =
-                        ClassDecl::new("ScreenCaptureDelegate1", class!(NSObject)).unwrap();
-                    unsafe {
-                        decl.add_method(
-                            sel!(stream:didOutputSampleBuffer:ofType:),
-                            capture_stream1 as extern "C" fn(&Object, _, id, id, NSInteger),
-                        );
-                    }
-                    decl.register()
-                });
-            }
-
             let windows: id = unsafe { msg_send![shareable_content, windows] };
             let windows = filter_windows(windows);
 
