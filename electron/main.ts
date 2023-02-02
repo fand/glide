@@ -12,28 +12,30 @@ const PAGE_COUNT = 5;
 
 type State = {
   page: number;
-  win1: BrowserWindow | undefined;
-  win2: BrowserWindow | undefined;
+  win: BrowserWindow | undefined;
+  winNext: BrowserWindow | undefined;
+  winPrev: BrowserWindow | undefined;
 };
 
 const state: State = {
   page: 0,
-  win1: undefined,
-  win2: undefined,
+  win: undefined,
+  winNext: undefined,
+  winPrev: undefined,
 };
 
 function createWindow() {
   const win = new BrowserWindow({
     icon: join(process.env.PUBLIC, "logo.svg"),
     frame: false,
-    simpleFullscreen: true,
+    // simpleFullscreen: true,
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: true,
       preload: join(__dirname, "./preload.js"),
     },
   });
-  win.setSimpleFullScreen(true);
+  //   win.setSimpleFullScreen(true);
 
   if (app.isPackaged) {
     win.loadFile(join(process.env.DIST, "index.html"));
@@ -44,35 +46,64 @@ function createWindow() {
   return win;
 }
 
-app.whenReady().then(() => {
-  const w1 = createWindow();
-  const w2 = createWindow();
+app.whenReady().then(async () => {
+  const win = createWindow();
+  const winNext = createWindow();
+  const winPrev = createWindow();
 
-  w1.setPosition(0, 0);
-  w2.setOpacity(0);
+  win.on("close", () => (state.win = undefined));
+  winNext.on("close", () => (state.winNext = undefined));
+  winPrev.on("close", () => (state.winPrev = undefined));
 
-  w1.webContents.on("did-finish-load", () => {
-    w1.webContents.send("load", 0);
-  });
-  w2.webContents.on("did-finish-load", () => {
-    w2.webContents.send("load", 1);
-  });
+  await new Promise((o) => win.webContents.on("did-finish-load", o));
+  await new Promise((o) => winNext.webContents.on("did-finish-load", o));
+
+  win.setPosition(800, 0);
+  winNext.setPosition(1200, 0);
+  winPrev.setPosition(0, 0);
+
+  win.webContents.send("load", 0);
+  winNext.webContents.send("load", 1);
 
   globalShortcut.register("Shift+Right", () => {
     state.page = (state.page + 1) % PAGE_COUNT;
-    w1.webContents.send("load", state.page);
-    w2.webContents.send("load", state.page + 1);
+
+    let [winPrev, win, winNext] = [state.winPrev, state.win, state.winNext];
+
+    [winPrev, win, winNext] = [win, winNext, winPrev];
+    winNext?.webContents.send("load", (state.page + 1) % PAGE_COUNT);
+
+    winPrev?.setPosition(0, 0);
+    win?.setPosition(800, 0);
+    winNext?.setPosition(1600, 0);
+
+    [state.winPrev, state.win, state.winNext] = [winPrev, win, winNext];
   });
+
   globalShortcut.register("Shift+Left", () => {
     state.page = (state.page - 1) % PAGE_COUNT;
-    w1.webContents.send("load", state.page);
-    w2.webContents.send("load", (state.page + 1) % PAGE_COUNT);
+
+    let [winPrev, win, winNext] = [state.winPrev, state.win, state.winNext];
+
+    [winPrev, win, winNext] = [winNext, winPrev, win];
+    winPrev?.webContents.send("load", (state.page - 1) % PAGE_COUNT);
+
+    winPrev?.setPosition(0, 0);
+    win?.setPosition(800, 0);
+    winNext?.setPosition(1600, 0);
+
+    [state.winPrev, state.win, state.winNext] = [winPrev, win, winNext];
   });
+
+  state.win = win;
+  state.winNext = winNext;
+  state.winPrev = winPrev;
 });
 
 app.on("window-all-closed", () => {
-  state.win1 = undefined;
-  state.win2 = undefined;
+  state.win = undefined;
+  state.winNext = undefined;
+  state.winPrev = undefined;
 });
 
 app.on("quit", () => {
