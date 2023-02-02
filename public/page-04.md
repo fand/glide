@@ -2,9 +2,9 @@
 title: Hello Page2
 transition_in: crossfade
 ---
-# Page2
+# Page4
 
-this is page 2~~
+this is page 4
 
 
 ## Rust
