@@ -1,11 +1,6 @@
-use std::{
-    cell::RefCell,
-    ffi::c_void,
-    ptr::{null, null_mut},
-    rc::Rc,
-};
+use std::ptr::{null, null_mut};
 
-use block::{ConcreteBlock, RcBlock};
+use block::ConcreteBlock;
 use cacao::{
     core_graphics::display::{CGPoint, CGRect, CGSize},
     foundation::{id, NSInteger, NSString},
@@ -45,17 +40,8 @@ fn filter_windows(windows: id) -> id {
     out
 }
 
-// Copied from https://users.rust-lang.org/t/converting-between-references-and-c-void/39599
-unsafe fn voidp_to_ref<'a, T>(p: *const c_void) -> &'a T {
-    unsafe { &*(p as *const T) }
-}
-fn ref_to_voidp<T>(r: &T) -> *const c_void {
-    r as *const T as *const c_void
-}
-
 pub struct Grabber {
     instance_id: u32,
-    buf: Rc<RefCell<Vec<u8>>>,
 }
 
 unsafe impl Sync for Grabber {}
@@ -66,7 +52,6 @@ pub fn define_delegate() {
     unsafe {
         decl.add_ivar::<u32>("_delegate_id");
         decl.add_ivar::<u32>("_frame_count");
-        decl.add_ivar::<*const c_void>("_callback");
 
         extern "C" fn capture_stream(
             _this: &mut Object,
@@ -99,18 +84,15 @@ pub fn define_delegate() {
                 if frame_count % 10 == 0 && width != 0 && height != 0 {
                     let slice = std::slice::from_raw_parts(ptr, width * height * 4);
 
-                    let cb: *const c_void = *_this.get_ivar("_callback");
-                    let cb = voidp_to_ref::<RcBlock<(*mut Object), ()>>(cb);
-
-                    // image::save_buffer_with_format(
-                    //     format!("tmp/img-{}-{}.png", delegate_id, frame_count),
-                    //     slice,
-                    //     width as u32,
-                    //     height as u32,
-                    //     image::ColorType::Rgba8,
-                    //     image::ImageFormat::Png,
-                    // )
-                    // .expect("failed to save image");
+                    image::save_buffer_with_format(
+                        format!("tmp/img-{}-{}.png", delegate_id, frame_count),
+                        slice,
+                        width as u32,
+                        height as u32,
+                        image::ColorType::Rgba8,
+                        image::ImageFormat::Png,
+                    )
+                    .expect("failed to save image");
                 }
 
                 ffi::CVPixelBufferUnlockBaseAddress(pixel_buffer, 1);
@@ -125,8 +107,8 @@ pub fn define_delegate() {
 }
 
 impl Grabber {
-    pub fn new(instance_id: u32, buf: Rc<RefCell<Vec<u8>>>) -> Grabber {
-        Self { instance_id, buf }
+    pub fn new(instance_id: u32) -> Grabber {
+        Self { instance_id }
     }
 
     pub fn start(&self) {
@@ -136,14 +118,6 @@ impl Grabber {
         } else {
             "GLIDE-ELECTRON WIN 2"
         };
-
-        let block_for_delegate = {
-            let buf = self.buf.clone();
-            ConcreteBlock::new(move |buffer: &[u8]| {
-                *buf.borrow_mut() = buffer.to_vec();
-            })
-        };
-        let block_for_delegate = block_for_delegate.copy();
 
         let block = ConcreteBlock::new(move |shareable_content: id, _err: id| {
             let windows: id = unsafe { msg_send![shareable_content, windows] };
@@ -230,9 +204,6 @@ impl Grabber {
                 let _: () = (*delegate).set_ivar("_delegate_id", instance_id + 100);
                 let _: () = (*delegate).set_ivar("_frame_count", 0 as u32);
 
-                let block_pointer: *const c_void = ref_to_voidp(&block_for_delegate);
-                let _: () = (*delegate).set_ivar("_callback", block_pointer);
-
                 del
             };
 
@@ -254,7 +225,6 @@ impl Grabber {
         });
 
         let block = block.copy();
-
         unsafe {
             let _: () = msg_send![
                 class!(SCShareableContent),

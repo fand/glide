@@ -8,11 +8,11 @@ use grabber::{define_delegate, Grabber};
 fn main() {
     define_delegate();
 
-    let r1 = Rc::new(RefCell::new(vec![0u8]));
-    let r2 = Rc::new(RefCell::new(vec![0u8]));
+    let r1 = Rc::new(RefCell::new(0));
+    let r2 = Rc::new(RefCell::new(0));
 
-    let grabber0 = Grabber::new(0, r1);
-    let grabber1 = Grabber::new(1, r2);
+    let grabber0 = Grabber::new(0);
+    let grabber1 = Grabber::new(1);
     grabber0.start();
     grabber1.start();
 
