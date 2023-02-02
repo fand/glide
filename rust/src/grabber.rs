@@ -13,6 +13,8 @@ use objc::{
     sel, sel_impl,
 };
 
+use crate::store;
+
 fn obj_to_string(ptr: *mut Object, default: &str) -> String {
     if ptr.is_null() {
         default.to_string()
@@ -70,29 +72,20 @@ pub fn define_delegate() {
                 let ptr = ffi::CVPixelBufferGetBaseAddress(pixel_buffer) as *mut u8;
 
                 let delegate_id: u32 = *_this.get_ivar("_delegate_id");
-                println!(">> capture_stream: delegate_id = {}", delegate_id);
+                // println!(">> capture_stream: delegate_id = {}", delegate_id);
 
                 let mut frame_count: u32 = *_this.get_ivar("_frame_count");
                 frame_count += 1;
                 (*_this).set_ivar("_frame_count", frame_count);
 
-                println!(
-                    ">> captured {}: {}th: ({}, {})",
-                    delegate_id, frame_count, width, height
-                );
+                if width != 0 && height != 0 {
+                    println!(
+                        ">> captured {}: {}th: ({}, {})",
+                        delegate_id, frame_count, width, height
+                    );
 
-                if frame_count % 10 == 0 && width != 0 && height != 0 {
                     let slice = std::slice::from_raw_parts(ptr, width * height * 4);
-
-                    image::save_buffer_with_format(
-                        format!("tmp/img-{}-{}.png", delegate_id, frame_count),
-                        slice,
-                        width as u32,
-                        height as u32,
-                        image::ColorType::Rgba8,
-                        image::ImageFormat::Png,
-                    )
-                    .expect("failed to save image");
+                    store::save_buffer(delegate_id, slice);
                 }
 
                 ffi::CVPixelBufferUnlockBaseAddress(pixel_buffer, 1);
@@ -201,7 +194,7 @@ impl Grabber {
                 let del = msg_send![delegate, init];
 
                 // Init properties
-                let _: () = (*delegate).set_ivar("_delegate_id", instance_id + 100);
+                let _: () = (*delegate).set_ivar("_delegate_id", instance_id);
                 let _: () = (*delegate).set_ivar("_frame_count", 0 as u32);
 
                 del

@@ -1,9 +1,11 @@
+use std::borrow::Borrow;
 use std::time::SystemTime;
 
 use image::DynamicImage;
-use image::EncodableLayout;
 use notan::draw::*;
 use notan::prelude::*;
+
+use crate::store;
 
 //language=glsl
 const VERT: ShaderSource = notan::vertex_shader! {
@@ -40,17 +42,24 @@ layout(set = 0, binding = 0) uniform Locals {
 void main() {
     vec2 uv = v_uv;
 
-    vec4 c1 = texture(tex1, uv);
-    vec4 c2 = texture(tex2, uv);
+    // vec4 c1 = texture(tex1, uv);
+    // vec4 c2 = texture(tex2, uv);
 
-    if (c1.a != 0.0) { c1.rgb /= c1.a; }
-    if (c2.a != 0.0) { c2.rgb /= c2.a; }
+    // if (c1.a != 0.0) { c1.rgb /= c1.a; }
+    // if (c2.a != 0.0) { c2.rgb /= c2.a; }
 
-    if (sin(time * 3.) > 0.) {
-        color = mix(c1, c2, fract(time));
+    // if (sin(time * 3.) > 0.) {
+    //     color = mix(c1, c2, fract(time));
+    // } else {
+    //     discard;
+    // }
+
+    if (fract(time * 2.) < 0.5) {
+        color = texture(tex1, uv);
     } else {
-        discard;
+        color = texture(tex2, uv);
     }
+    color.rgb /= color.a;
 }
 "#
 };
@@ -189,21 +198,46 @@ impl GLApp {
 
         let mut renderer = gfx.create_renderer();
 
-        gfx.update_texture(&mut state.texture1)
-            .with_data(&state.image1.as_bytes())
-            .update()
-            .unwrap();
-
-        gfx.update_texture(&mut state.texture2)
-            .with_data(&state.image2.as_bytes())
-            .update()
-            .unwrap();
+        if let Some(buf) = store::get_buffer(0) {
+            let tex_size = (state.texture1.width() * state.texture1.height() * 4.0) as usize;
+            if tex_size != buf.len() {
+                println!(">> tex1: {} / {}", tex_size, buf.len());
+                state.texture1 = gfx
+                    .create_texture()
+                    .from_bytes(buf, 800, 600)
+                    .with_premultiplied_alpha()
+                    .build()
+                    .unwrap();
+            } else {
+                gfx.update_texture(&mut state.texture1)
+                    .with_data(buf)
+                    .update()
+                    .unwrap();
+            }
+        }
+        if let Some(buf) = store::get_buffer(1) {
+            let tex_size = (state.texture2.width() * state.texture2.height() * 4.0) as usize;
+            if tex_size != buf.len() {
+                println!(">> tex2: {} / {}", tex_size, buf.len());
+                state.texture2 = gfx
+                    .create_texture()
+                    .from_bytes(buf, 800, 600)
+                    .with_premultiplied_alpha()
+                    .build()
+                    .unwrap();
+            } else {
+                gfx.update_texture(&mut state.texture2)
+                    .with_data(buf)
+                    .update()
+                    .unwrap();
+            }
+        }
 
         gfx.clean();
         renderer.begin(Some(&state.clear_options));
         renderer.set_pipeline(&state.pipeline);
-        renderer.bind_texture(0, &state.texture1);
-        renderer.bind_texture(1, &state.texture2);
+        // renderer.bind_texture(0, &state.texture1.borrow());
+        // renderer.bind_texture(1, &state.texture2.borrow());
         renderer.bind_buffers(&[&state.vbo, &state.ibo]);
         renderer.draw(0, 6);
         renderer.end();
