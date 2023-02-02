@@ -12,9 +12,11 @@
     "build": "tsc && vite build && electron-builder"
   },
   "dependencies": {
+    "highlight.js": "^11.7.0",
     "marked": "^4.2.12"
   },
   "devDependencies": {
+    "@types/highlight.js": "^10.1.0",
     "@types/marked": "^4.0.8",
     "electron": "^19.0.6",
     "electron-builder": "^23.1.0",
