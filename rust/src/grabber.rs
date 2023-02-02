@@ -62,6 +62,8 @@ impl Grabber {
         {
             let mut decl = ClassDecl::new(&class_name, class!(NSObject)).unwrap();
             unsafe {
+                decl.add_ivar::<u32>("_number");
+
                 decl.add_method(
                     sel!(stream:didOutputSampleBuffer:ofType:),
                     cb as extern "C" fn(&Object, _, id, id, NSInteger),
@@ -164,8 +166,13 @@ impl Grabber {
                 } else {
                     msg_send![class!(ScreenCaptureDelegate1), alloc]
                 };
+
                 msg_send![delegate, init]
             };
+
+            let mynum = instance_id + 100;
+            let _: () = unsafe { (*delegate).set_ivar("_number", mynum) };
+
             let error: id = null_mut();
             let did_add_output: bool = unsafe {
                 println!(">> did_add_output!");
@@ -252,10 +259,14 @@ extern "C" fn capture_stream0(
         ffi::CVPixelBufferLockBaseAddress(pixel_buffer, 1);
         let ptr = ffi::CVPixelBufferGetBaseAddress(pixel_buffer) as *mut u8;
 
-        println!(
-            ">> captured 0: {}th: ({}, {})",
-            FRAME_COUNT_0, width, height
-        );
+        let my_number: u32 = *_this.get_ivar("_number");
+        println!(">> capture_stream0: my_number = {}", my_number);
+
+        // println!(
+        //     ">> captured 0: {}th: ({}, {})",
+        //     FRAME_COUNT_0, width, height
+        // );
+
         FRAME_COUNT_0 += 1;
 
         if FRAME_COUNT_0 % 10 == 0 && width != 0 && height != 0 {
@@ -292,10 +303,14 @@ extern "C" fn capture_stream1(
         ffi::CVPixelBufferLockBaseAddress(pixel_buffer, 1);
         let ptr = ffi::CVPixelBufferGetBaseAddress(pixel_buffer) as *mut u8;
 
-        println!(
-            ">> captured 1: {}th: ({}, {})",
-            FRAME_COUNT_1, width, height
-        );
+        let my_number: u32 = *_this.get_ivar("_number");
+        println!(">> capture_stream1: my_number = {}", my_number);
+
+        // println!(
+        //     ">> captured 1: {}th: ({}, {})",
+        //     FRAME_COUNT_1, width, height
+        // );
+
         FRAME_COUNT_1 += 1;
 
         if FRAME_COUNT_1 % 10 == 0 && width != 0 && height != 0 {
