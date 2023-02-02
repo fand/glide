@@ -1,5 +1,7 @@
 use std::time::SystemTime;
 
+use image::DynamicImage;
+use image::EncodableLayout;
 use notan::draw::*;
 use notan::prelude::*;
 
@@ -44,9 +46,11 @@ void main() {
     if (c1.a != 0.0) { c1.rgb /= c1.a; }
     if (c2.a != 0.0) { c2.rgb /= c2.a; }
 
-    color = mix(c1, c2, fract(time));
-    color *= 0.2;
-    color.a = 0.1;
+    if (sin(time * 3.) > 0.) {
+        color = mix(c1, c2, fract(time));
+    } else {
+        discard;
+    }
 }
 "#
 };
@@ -61,7 +65,8 @@ struct State {
 
     texture1: Texture,
     texture2: Texture,
-
+    image1: DynamicImage,
+    image2: DynamicImage,
     start_time: SystemTime,
 }
 
@@ -130,15 +135,26 @@ impl GLApp {
             .build()
             .unwrap();
 
+        let image1 = image::open("src/gl/ferris.png").unwrap();
+        let image2 = image::open("src/gl/gopher.png").unwrap();
+
         let texture1 = gfx
             .create_texture()
-            .from_image(include_bytes!("tauri-test-window-2.png"))
+            .from_bytes(
+                image1.as_bytes(),
+                image1.width() as i32,
+                image1.height() as i32,
+            )
             .with_premultiplied_alpha()
             .build()
             .unwrap();
         let texture2 = gfx
             .create_texture()
-            .from_image(include_bytes!("gopher.png"))
+            .from_bytes(
+                image2.as_bytes(),
+                image2.width() as i32,
+                image2.height() as i32,
+            )
             .with_premultiplied_alpha()
             .build()
             .unwrap();
@@ -156,6 +172,8 @@ impl GLApp {
             ibo,
             ubo,
 
+            image1,
+            image2,
             texture1,
             texture2,
 
@@ -171,6 +189,17 @@ impl GLApp {
 
         let mut renderer = gfx.create_renderer();
 
+        gfx.update_texture(&mut state.texture1)
+            .with_data(&state.image1.as_bytes())
+            .update()
+            .unwrap();
+
+        gfx.update_texture(&mut state.texture2)
+            .with_data(&state.image2.as_bytes())
+            .update()
+            .unwrap();
+
+        gfx.clean();
         renderer.begin(Some(&state.clear_options));
         renderer.set_pipeline(&state.pipeline);
         renderer.bind_texture(0, &state.texture1);
