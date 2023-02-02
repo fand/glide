@@ -72,7 +72,6 @@ pub fn define_delegate() {
                 let ptr = ffi::CVPixelBufferGetBaseAddress(pixel_buffer) as *mut u8;
 
                 let delegate_id: u32 = *_this.get_ivar("_delegate_id");
-                // println!(">> capture_stream: delegate_id = {}", delegate_id);
 
                 let mut frame_count: u32 = *_this.get_ivar("_frame_count");
                 frame_count += 1;
@@ -85,7 +84,7 @@ pub fn define_delegate() {
                     );
 
                     let slice = std::slice::from_raw_parts(ptr, width * height * 4);
-                    store::save_buffer(delegate_id, slice);
+                    store::save_buffer(delegate_id, slice, width, height);
                 }
 
                 ffi::CVPixelBufferUnlockBaseAddress(pixel_buffer, 1);
@@ -171,7 +170,7 @@ impl Grabber {
                 let _: () = msg_send![stream_config, setSourceRect: source_rect];
                 let _: () = msg_send![stream_config, setDestinationRect: destination_rect];
 
-                // let _: () = msg_send![stream_config, setShowCursor: false];
+                let _: () = msg_send![stream_config, setShowsCursor: false];
 
                 #[allow(non_upper_case_globals)]
                 const kCVPixelFormatType_32BGRA: u32 = 1111970369;

@@ -42,24 +42,17 @@ layout(set = 0, binding = 0) uniform Locals {
 void main() {
     vec2 uv = v_uv;
 
-    // vec4 c1 = texture(tex1, uv);
-    // vec4 c2 = texture(tex2, uv);
+    vec4 c1 = texture(tex1, uv);
+    vec4 c2 = texture(tex2, uv);
 
     // if (c1.a != 0.0) { c1.rgb /= c1.a; }
     // if (c2.a != 0.0) { c2.rgb /= c2.a; }
 
-    // if (sin(time * 3.) > 0.) {
-    //     color = mix(c1, c2, fract(time));
-    // } else {
-    //     discard;
-    // }
-
-    if (fract(time * 2.) < 0.5) {
-        color = texture(tex1, uv);
-    } else {
-        color = texture(tex2, uv);
-    }
+    color = mix(c1, c2, fract(time));
     color.rgb /= color.a;
+    color.a = color.a == 0.0 ? 0.0 : 0.8;
+
+    color.rgb *= color.a;
 }
 "#
 };
@@ -74,8 +67,6 @@ struct State {
 
     texture1: Texture,
     texture2: Texture,
-    image1: DynamicImage,
-    image2: DynamicImage,
     start_time: SystemTime,
 }
 
@@ -88,7 +79,8 @@ impl GLApp {
 
     pub fn run(&self) -> Result<(), String> {
         let win = WindowConfig::default()
-            .size(1200, 900)
+            .size(1920, 1080)
+            .maximized(true)
             .always_on_top(true)
             .mouse_passthrough(true)
             .decorations(false)
@@ -181,8 +173,6 @@ impl GLApp {
             ibo,
             ubo,
 
-            image1,
-            image2,
             texture1,
             texture2,
 
@@ -198,36 +188,48 @@ impl GLApp {
 
         let mut renderer = gfx.create_renderer();
 
-        if let Some(buf) = store::get_buffer(0) {
-            let tex_size = (state.texture1.width() * state.texture1.height() * 4.0) as usize;
-            if tex_size != buf.len() {
-                println!(">> tex1: {} / {}", tex_size, buf.len());
+        if let Some(tex) = store::get_buffer(0) {
+            let (w, h) = (
+                state.texture1.width() as usize,
+                state.texture1.height() as usize,
+            );
+            if w != tex.width || h != tex.height {
+                println!(
+                    ">> tex1 size changed: ({}, {}) -> ({}, {})",
+                    w, h, tex.width, tex.height
+                );
                 state.texture1 = gfx
                     .create_texture()
-                    .from_bytes(buf, 800, 600)
+                    .from_bytes(&tex.buf, tex.width as i32, tex.height as i32)
                     .with_premultiplied_alpha()
                     .build()
                     .unwrap();
             } else {
                 gfx.update_texture(&mut state.texture1)
-                    .with_data(buf)
+                    .with_data(&tex.buf)
                     .update()
                     .unwrap();
             }
         }
-        if let Some(buf) = store::get_buffer(1) {
-            let tex_size = (state.texture2.width() * state.texture2.height() * 4.0) as usize;
-            if tex_size != buf.len() {
-                println!(">> tex2: {} / {}", tex_size, buf.len());
+        if let Some(tex) = store::get_buffer(1) {
+            let (w, h) = (
+                state.texture2.width() as usize,
+                state.texture2.height() as usize,
+            );
+            if w != tex.width || h != tex.height {
+                println!(
+                    ">> tex2 size changed: ({}, {}) -> ({}, {})",
+                    w, h, tex.width, tex.height
+                );
                 state.texture2 = gfx
                     .create_texture()
-                    .from_bytes(buf, 800, 600)
+                    .from_bytes(&tex.buf, tex.width as i32, tex.height as i32)
                     .with_premultiplied_alpha()
                     .build()
                     .unwrap();
             } else {
                 gfx.update_texture(&mut state.texture2)
-                    .with_data(buf)
+                    .with_data(&tex.buf)
                     .update()
                     .unwrap();
             }
@@ -236,8 +238,8 @@ impl GLApp {
         gfx.clean();
         renderer.begin(Some(&state.clear_options));
         renderer.set_pipeline(&state.pipeline);
-        // renderer.bind_texture(0, &state.texture1.borrow());
-        // renderer.bind_texture(1, &state.texture2.borrow());
+        renderer.bind_texture(0, &state.texture1);
+        renderer.bind_texture(1, &state.texture2);
         renderer.bind_buffers(&[&state.vbo, &state.ibo]);
         renderer.draw(0, 6);
         renderer.end();

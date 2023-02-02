@@ -38,7 +38,7 @@ function createWindow() {
       preload: join(__dirname, "./preload.js"),
     },
   });
-  //   win.setSimpleFullScreen(true);
+  win.setSimpleFullScreen(true);
 
   if (app.isPackaged) {
     win.loadFile(join(process.env.DIST, "index.html"));
@@ -65,9 +65,9 @@ app.whenReady().then(async () => {
   await new Promise((o) => win.webContents.on("did-finish-load", o));
   await new Promise((o) => winNext.webContents.on("did-finish-load", o));
 
-  win.setPosition(800, 0);
-  winNext.setPosition(1200, 0);
-  winPrev.setPosition(0, 0);
+  win.setPosition(0, 0);
+  winNext.setPosition(-3000, 0);
+  winPrev.setPosition(-3000, 0);
 
   win.webContents.send("load", 0);
   winNext.webContents.send("load", 1);
@@ -80,9 +80,9 @@ app.whenReady().then(async () => {
     [winPrev, win, winNext] = [win, winNext, winPrev];
     winNext?.webContents.send("load", (state.page + 1) % PAGE_COUNT);
 
-    winPrev?.setPosition(0, 0);
-    win?.setPosition(800, 0);
-    winNext?.setPosition(1600, 0);
+    winPrev?.setPosition(-3000, 0);
+    win?.setPosition(0, 0);
+    winNext?.setPosition(-3000, 0);
 
     [state.winPrev, state.win, state.winNext] = [winPrev, win, winNext];
   });
@@ -95,9 +95,9 @@ app.whenReady().then(async () => {
     [winPrev, win, winNext] = [winNext, winPrev, win];
     winPrev?.webContents.send("load", (state.page - 1) % PAGE_COUNT);
 
-    winPrev?.setPosition(0, 0);
-    win?.setPosition(800, 0);
-    winNext?.setPosition(1600, 0);
+    winPrev?.setPosition(-3000, 0);
+    win?.setPosition(0, 0);
+    winNext?.setPosition(-3000, 0);
 
     [state.winPrev, state.win, state.winNext] = [winPrev, win, winNext];
   });

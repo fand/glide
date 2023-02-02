@@ -1,15 +1,27 @@
+use once_cell::sync::Lazy;
 use std::collections::HashMap;
 
-use once_cell::sync::Lazy;
+pub struct TexInfo {
+    pub buf: Vec<u8>,
+    pub width: usize,
+    pub height: usize,
+}
 
-static mut MAP: Lazy<HashMap<u32, Vec<u8>>> = Lazy::new(|| HashMap::new());
+static mut MAP: Lazy<HashMap<u32, TexInfo>> = Lazy::new(|| HashMap::new());
 
-pub fn save_buffer(id: u32, buf: &[u8]) {
+pub fn save_buffer(id: u32, buf: &[u8], width: usize, height: usize) {
     unsafe {
-        MAP.insert(id, buf.to_vec());
+        MAP.insert(
+            id,
+            TexInfo {
+                buf: buf.to_vec(),
+                width,
+                height,
+            },
+        );
     }
 }
 
-pub fn get_buffer(id: u32) -> Option<&'static Vec<u8>> {
+pub fn get_buffer(id: u32) -> Option<&'static TexInfo> {
     unsafe { MAP.get(&id) }
 }
