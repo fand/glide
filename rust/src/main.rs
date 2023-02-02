@@ -377,16 +377,19 @@ extern "C" fn capture_stream1(
     }
 }
 
-fn main() {
-    let mut config = WindowConfig::default();
-    config.set_initial_dimensions(0., 000., 800., 800.);
+mod gl;
 
-    App::new(
-        "com.amagi.glide_capture",
-        GlideCapture {
-            window: Window::new(config),
-            content: View::with(GrabberView::new()),
-        },
-    )
-    .run();
+fn main() {
+    gl::run();
+    // let mut config = WindowConfig::default();
+    // config.set_initial_dimensions(0., 000., 800., 800.);
+
+    // App::new(
+    //     "com.amagi.glide_capture",
+    //     GlideCapture {
+    //         window: Window::new(config),
+    //         content: View::with(GrabberView::new()),
+    //     },
+    // )
+    // .run();
 }

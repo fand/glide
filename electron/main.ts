@@ -54,6 +54,10 @@ app.whenReady().then(async () => {
   const winNext = createWindow();
   const winPrev = createWindow();
 
+  win.title = "GLIDE-ELECTRON WIN 1";
+  winNext.title = "GLIDE-ELECTRON WIN 2";
+  winPrev.title = "GLIDE-ELECTRON WIN 0";
+
   win.on("close", () => (state.win = undefined));
   winNext.on("close", () => (state.winNext = undefined));
   winPrev.on("close", () => (state.winPrev = undefined));
