@@ -1,5 +1,6 @@
 use std::time::SystemTime;
 
+use nannou_osc::Receiver;
 use notan::draw::*;
 use notan::prelude::*;
 
@@ -66,6 +67,8 @@ struct State {
     texture1: Texture,
     texture2: Texture,
     start_time: SystemTime,
+
+    receiver: Receiver,
 }
 
 pub struct GLApp {}
@@ -164,6 +167,8 @@ impl GLApp {
             .build()
             .unwrap();
 
+        let receiver = nannou_osc::receiver(9999).unwrap();
+
         State {
             clear_options,
             pipeline,
@@ -175,10 +180,21 @@ impl GLApp {
             texture2,
 
             start_time: SystemTime::now(),
+
+            receiver,
         }
     }
 
     fn draw(gfx: &mut Graphics, state: &mut State) {
+        // let mut a = vec![];
+        if let Some(p) = state.receiver.try_iter().next() {
+            println!(">> {:?}", p);
+        }
+        // for (p, addr) in state.receiver.iter() {
+
+        //     //     a.push(addr);
+        // }
+
         let now = SystemTime::now();
         if let Ok(n) = now.duration_since(state.start_time) {
             gfx.set_buffer_data(&state.ubo, &vec![n.as_secs_f32()]);
@@ -243,5 +259,7 @@ impl GLApp {
         renderer.end();
 
         gfx.render(&renderer);
+
+        // println!(">> addrs: {:?}", a);
     }
 }
