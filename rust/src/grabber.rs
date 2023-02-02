@@ -51,26 +51,62 @@ impl Grabber {
     pub fn new(instance_id: u32) -> Grabber {
         let class_name = format!("ScreenCaptureDelegate{}", instance_id);
 
-        let cb = if instance_id == 0 {
-            capture_stream0
-        } else {
-            capture_stream1
-        };
+        let mut decl = ClassDecl::new(&class_name, class!(NSObject)).unwrap();
+        unsafe {
+            decl.add_ivar::<u32>("_delegate_id");
+            decl.add_ivar::<u32>("_frame_count");
 
-        // Define class per instance.
-        // TODO: DRY
-        {
-            let mut decl = ClassDecl::new(&class_name, class!(NSObject)).unwrap();
-            unsafe {
-                decl.add_ivar::<u32>("_number");
+            extern "C" fn capture_stream(
+                _this: &mut Object,
+                _: Sel,
+                _stream: id,
+                sample_buffer: id,
+                _typ: NSInteger,
+            ) {
+                let pixel_buffer: id = unsafe { ffi::CMSampleBufferGetImageBuffer(sample_buffer) };
+                let pixel_buffer = pixel_buffer as ffi::CVBufferRef;
+                let width = unsafe { ffi::CVPixelBufferGetWidth(pixel_buffer) };
+                let height = unsafe { ffi::CVPixelBufferGetHeight(pixel_buffer) };
 
-                decl.add_method(
-                    sel!(stream:didOutputSampleBuffer:ofType:),
-                    cb as extern "C" fn(&Object, _, id, id, NSInteger),
-                );
+                unsafe {
+                    ffi::CVPixelBufferLockBaseAddress(pixel_buffer, 1);
+                    let ptr = ffi::CVPixelBufferGetBaseAddress(pixel_buffer) as *mut u8;
+
+                    let delegate_id: u32 = *_this.get_ivar("_delegate_id");
+                    println!(">> capture_stream: delegate_id = {}", delegate_id);
+
+                    let mut frame_count: u32 = *_this.get_ivar("_frame_count");
+                    frame_count += 1;
+                    (*_this).set_ivar("_frame_count", frame_count);
+
+                    println!(
+                        ">> captured {}: {}th: ({}, {})",
+                        delegate_id, frame_count, width, height
+                    );
+
+                    if frame_count % 10 == 0 && width != 0 && height != 0 {
+                        let slice = std::slice::from_raw_parts(ptr, width * height * 4);
+
+                        image::save_buffer_with_format(
+                            format!("tmp/img-{}-{}.png", delegate_id, frame_count),
+                            slice,
+                            width as u32,
+                            height as u32,
+                            image::ColorType::Rgba8,
+                            image::ImageFormat::Png,
+                        )
+                        .expect("failed to save image");
+                    }
+
+                    ffi::CVPixelBufferUnlockBaseAddress(pixel_buffer, 1);
+                }
             }
-            decl.register();
+            decl.add_method(
+                sel!(stream:didOutputSampleBuffer:ofType:),
+                capture_stream as extern "C" fn(&mut Object, _, id, id, NSInteger),
+            );
         }
+        decl.register();
 
         Self { instance_id }
     }
@@ -167,11 +203,14 @@ impl Grabber {
                     msg_send![class!(ScreenCaptureDelegate1), alloc]
                 };
 
-                msg_send![delegate, init]
-            };
+                let del = msg_send![delegate, init];
 
-            let mynum = instance_id + 100;
-            let _: () = unsafe { (*delegate).set_ivar("_number", mynum) };
+                // Init properties
+                let _: () = (*delegate).set_ivar("_delegate_id", instance_id + 100);
+                let _: () = (*delegate).set_ivar("_frame_count", 0 as u32);
+
+                del
+            };
 
             let error: id = null_mut();
             let did_add_output: bool = unsafe {
@@ -237,96 +276,5 @@ mod ffi {
     #[link(name = "CoreMedia", kind = "framework")]
     extern "C" {
         pub fn CMSampleBufferGetImageBuffer(buffer: id) -> id;
-    }
-}
-
-static mut FRAME_COUNT_0: u32 = 0;
-static mut FRAME_COUNT_1: u32 = 0;
-
-extern "C" fn capture_stream0(
-    _this: &Object,
-    _: Sel,
-    _stream: id,
-    sample_buffer: id,
-    _typ: NSInteger,
-) {
-    let pixel_buffer: id = unsafe { ffi::CMSampleBufferGetImageBuffer(sample_buffer) };
-    let pixel_buffer = pixel_buffer as ffi::CVBufferRef;
-    let width = unsafe { ffi::CVPixelBufferGetWidth(pixel_buffer) };
-    let height = unsafe { ffi::CVPixelBufferGetHeight(pixel_buffer) };
-
-    unsafe {
-        ffi::CVPixelBufferLockBaseAddress(pixel_buffer, 1);
-        let ptr = ffi::CVPixelBufferGetBaseAddress(pixel_buffer) as *mut u8;
-
-        let my_number: u32 = *_this.get_ivar("_number");
-        println!(">> capture_stream0: my_number = {}", my_number);
-
-        // println!(
-        //     ">> captured 0: {}th: ({}, {})",
-        //     FRAME_COUNT_0, width, height
-        // );
-
-        FRAME_COUNT_0 += 1;
-
-        if FRAME_COUNT_0 % 10 == 0 && width != 0 && height != 0 {
-            let slice = std::slice::from_raw_parts(ptr, width * height * 4);
-
-            image::save_buffer_with_format(
-                format!("tmp/img-0-{}.png", FRAME_COUNT_0),
-                slice,
-                width as u32,
-                height as u32,
-                image::ColorType::Rgba8,
-                image::ImageFormat::Png,
-            )
-            .expect("failed to save image");
-        }
-
-        ffi::CVPixelBufferUnlockBaseAddress(pixel_buffer, 1);
-    }
-}
-
-extern "C" fn capture_stream1(
-    _this: &Object,
-    _: Sel,
-    _stream: id,
-    sample_buffer: id,
-    _typ: NSInteger,
-) {
-    let pixel_buffer: id = unsafe { ffi::CMSampleBufferGetImageBuffer(sample_buffer) };
-    let pixel_buffer = pixel_buffer as ffi::CVBufferRef;
-    let width = unsafe { ffi::CVPixelBufferGetWidth(pixel_buffer) };
-    let height = unsafe { ffi::CVPixelBufferGetHeight(pixel_buffer) };
-
-    unsafe {
-        ffi::CVPixelBufferLockBaseAddress(pixel_buffer, 1);
-        let ptr = ffi::CVPixelBufferGetBaseAddress(pixel_buffer) as *mut u8;
-
-        let my_number: u32 = *_this.get_ivar("_number");
-        println!(">> capture_stream1: my_number = {}", my_number);
-
-        // println!(
-        //     ">> captured 1: {}th: ({}, {})",
-        //     FRAME_COUNT_1, width, height
-        // );
-
-        FRAME_COUNT_1 += 1;
-
-        if FRAME_COUNT_1 % 10 == 0 && width != 0 && height != 0 {
-            let slice = std::slice::from_raw_parts(ptr, width * height * 4);
-
-            image::save_buffer_with_format(
-                format!("tmp/img-1-{}.png", FRAME_COUNT_1),
-                slice,
-                width as u32,
-                height as u32,
-                image::ColorType::Rgba8,
-                image::ImageFormat::Png,
-            )
-            .expect("failed to save image");
-        }
-
-        ffi::CVPixelBufferUnlockBaseAddress(pixel_buffer, 1);
     }
 }
