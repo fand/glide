@@ -7,10 +7,18 @@ process.env.PUBLIC = app.isPackaged
   ? process.env.DIST
   : join(process.env.DIST, "../public");
 
-let win: BrowserWindow | null;
+type State = {
+  win1: BrowserWindow | undefined;
+  win2: BrowserWindow | undefined;
+};
+
+const state: State = {
+  win1: undefined,
+  win2: undefined,
+};
 
 function createWindow() {
-  win = new BrowserWindow({
+  const win = new BrowserWindow({
     icon: join(process.env.PUBLIC, "logo.svg"),
     frame: false,
     webPreferences: {
@@ -31,10 +39,19 @@ function createWindow() {
   } else {
     win.loadURL(process.env["VITE_DEV_SERVER_URL"]);
   }
+
+  return win;
 }
 
 app.on("window-all-closed", () => {
-  win = null;
+  state.win1 = undefined;
+  state.win2 = undefined;
 });
 
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+  const w1 = createWindow();
+  const w2 = createWindow();
+
+  w1.setPosition(0, 0);
+  w2.setPosition(900, 0);
+});
