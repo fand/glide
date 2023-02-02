@@ -1,0 +1,14 @@
+[package]
+name = "glide-capture"
+version = "0.0.1"
+edition = "2021"
+
+[dependencies]
+cacao = "0.2"
+once_cell = "1"
+objc = "0.2.7"
+block = "0.1"
+image = "*"
+
+[build-dependencies]
+bindgen = "0.58.1"
