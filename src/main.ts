@@ -5,10 +5,16 @@ import frontmatter from "front-matter";
 import hljs from "highlight.js";
 import "highlight.js/styles/dark.css";
 
-async function init() {
-  const el = document.querySelector("#app")!;
+const el = document.querySelector("#app")!;
 
-  const md = await fetch("/page1.md").then((r) => r.text());
+window.electronAPI.onLoad((event: any, value: number) => {
+  load(value);
+});
+
+async function load(index: number) {
+  const filename = `/page-${index.toString().padStart(2, "0")}.md`;
+
+  const md = await fetch(filename).then((r) => r.text());
   const fm = frontmatter(md);
 
   el.innerHTML = marked(fm.body, {
@@ -20,4 +26,3 @@ async function init() {
     langPrefix: "hljs language-",
   });
 }
-init();

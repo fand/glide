@@ -1,5 +1,6 @@
 import { join } from "path";
 import { app, BrowserWindow } from "electron";
+import { ipcMain } from "electron/main";
 
 // Prepare paths
 process.env.DIST = join(__dirname, "..");
@@ -21,17 +22,12 @@ function createWindow() {
   const win = new BrowserWindow({
     icon: join(process.env.PUBLIC, "logo.svg"),
     frame: false,
+    // simpleFullscreen: true,
     webPreferences: {
-      contextIsolation: false,
+      contextIsolation: true,
       nodeIntegration: true,
       preload: join(__dirname, "./preload.js"),
     },
-  });
-  //   win.maximize();
-
-  // Test active push message to Renderer-process.
-  win.webContents.on("did-finish-load", () => {
-    win?.webContents.send("main-process-message", new Date().toLocaleString());
   });
 
   if (app.isPackaged) {
@@ -54,4 +50,11 @@ app.whenReady().then(() => {
 
   w1.setPosition(0, 0);
   w2.setPosition(900, 0);
+
+  w1.webContents.on("did-finish-load", () => {
+    w1.webContents.send("load", 1);
+  });
+  w2.webContents.on("did-finish-load", () => {
+    w2.webContents.send("load", 2);
+  });
 });
