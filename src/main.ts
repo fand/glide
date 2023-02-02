@@ -21,5 +21,3 @@ async function init() {
   });
 }
 init();
-
-postMessage({ payload: "removeLoading" }, "*");
