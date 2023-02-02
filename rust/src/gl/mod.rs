@@ -1,2 +1,2 @@
 mod lib;
-pub use lib::run;
+pub use lib::GLApp;

@@ -17,57 +17,12 @@ use objc::{
     runtime::{Class, Object, Sel},
 };
 use once_cell::sync::{Lazy, OnceCell};
+
 #[macro_use]
 extern crate objc;
 
-struct GlideCapture {
-    window: Window,
-    content: View<GrabberView>,
-}
-
-impl AppDelegate for GlideCapture {
-    fn did_finish_launching(&self) {
-        self.window.set_minimum_content_size(400., 400.);
-        self.window.set_title("A Basic Window");
-        self.window.set_content_view(&self.content);
-
-        self.window.show();
-    }
-}
-
 static CAPTURE_DELEGATE0: OnceCell<&'static Class> = OnceCell::new();
 static CAPTURE_DELEGATE1: OnceCell<&'static Class> = OnceCell::new();
-
-static GRABBER0: Lazy<Grabber> = Lazy::new(|| Grabber::new(0));
-static GRABBER1: Lazy<Grabber> = Lazy::new(|| Grabber::new(1));
-
-fn start() {
-    GRABBER0.start();
-    std::thread::spawn(|| GRABBER1.start());
-}
-
-struct GrabberView {
-    button: Button,
-}
-
-impl GrabberView {
-    fn new() -> Self {
-        let mut button = Button::new("Start");
-        button.set_action(start);
-
-        Self { button }
-    }
-}
-
-impl ViewDelegate for GrabberView {
-    const NAME: &'static str = "GrabberView";
-
-    fn did_load(&mut self, view: View) {
-        view.add_subview(&self.button);
-
-        LayoutConstraint::activate(&[self.button.top.constraint_equal_to(&view.top).offset(36.)]);
-    }
-}
 
 struct Grabber {
     instance_id: u32,
@@ -380,20 +335,11 @@ extern "C" fn capture_stream1(
 mod gl;
 
 fn main() {
-    GRABBER0.start();
-    std::thread::spawn(|| GRABBER1.start());
+    let grabber0 = Grabber::new(0);
+    let grabber1 = Grabber::new(1);
+    grabber0.start();
+    std::thread::spawn(move || grabber1.start());
 
-    gl::run();
-
-    // let mut config = WindowConfig::default();
-    // config.set_initial_dimensions(0., 000., 800., 800.);
-
-    // App::new(
-    //     "com.amagi.glide_capture",
-    //     GlideCapture {
-    //         window: Window::new(config),
-    //         content: View::with(GrabberView::new()),
-    //     },
-    // )
-    // .run();
+    let app = gl::GLApp::new();
+    app.run();
 }
