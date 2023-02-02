@@ -1,7 +1,5 @@
-use std::borrow::Borrow;
 use std::time::SystemTime;
 
-use image::DynamicImage;
 use notan::draw::*;
 use notan::prelude::*;
 
