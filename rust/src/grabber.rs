@@ -262,7 +262,7 @@ extern "C" fn capture_stream0(
             let slice = std::slice::from_raw_parts(ptr, width * height * 4);
 
             image::save_buffer_with_format(
-                format!("img-0-{}.png", FRAME_COUNT_0),
+                format!("tmp/img-0-{}.png", FRAME_COUNT_0),
                 slice,
                 width as u32,
                 height as u32,
@@ -302,7 +302,7 @@ extern "C" fn capture_stream1(
             let slice = std::slice::from_raw_parts(ptr, width * height * 4);
 
             image::save_buffer_with_format(
-                format!("img-1-{}.png", FRAME_COUNT_1),
+                format!("tmp/img-1-{}.png", FRAME_COUNT_1),
                 slice,
                 width as u32,
                 height as u32,
