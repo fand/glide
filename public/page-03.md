@@ -6,4 +6,4 @@ transition_in: crossfade
 
 this is page 3
 
-
+![](doge.gif)
