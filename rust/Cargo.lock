@@ -867,6 +867,7 @@ dependencies = [
  "block",
  "cacao",
  "image",
+ "nannou_osc",
  "notan",
  "objc",
  "once_cell",
@@ -1344,6 +1345,15 @@ dependencies = [
  "log",
  "wasi 0.11.0+wasi-snapshot-preview1",
  "windows-sys 0.42.0",
+]
+
+[[package]]
+name = "nannou_osc"
+version = "0.18.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f9995e9e5af9e50a05aa056f261e1ebb27b46409f1ff3bb219a0a2277574785c"
+dependencies = [
+ "rosc",
 ]
 
 [[package]]
@@ -2096,6 +2106,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3acd125665422973a33ac9d3dd2df85edad0f4ae9b00dafb1a05e43a9f5ef8e7"
 dependencies = [
  "winapi",
+]
+
+[[package]]
+name = "rosc"
+version = "0.1.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "39332ba44e0804497d958f692a3fbb7dd993cc996070189f40577de87ff1b8d9"
+dependencies = [
+ "byteorder",
 ]
 
 [[package]]
