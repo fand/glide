@@ -110,10 +110,10 @@ impl Grabber {
 
     fn start(&self) {
         let instance_id = self.instance_id;
-        let app_pattern = if instance_id == 0 {
-            "Google Chrome"
+        let title_pattern = if instance_id == 0 {
+            "GLIDE-ELECTRON WIN 1"
         } else {
-            "Slack"
+            "GLIDE-ELECTRON WIN 2"
         };
 
         let block = ConcreteBlock::new(move |shareable_content: id, _err: id| {
@@ -165,7 +165,7 @@ impl Grabber {
                 let title = obj_to_string(unsafe { msg_send![w, title] }, "NO TITLE");
                 println!(">> window {}: {} - {}", i, owning_app_name, title);
 
-                if owning_app_name.contains(app_pattern) {
+                if title.contains(title_pattern) {
                     window = w;
                 }
             }
@@ -380,7 +380,11 @@ extern "C" fn capture_stream1(
 mod gl;
 
 fn main() {
+    GRABBER0.start();
+    std::thread::spawn(|| GRABBER1.start());
+
     gl::run();
+
     // let mut config = WindowConfig::default();
     // config.set_initial_dimensions(0., 000., 800., 800.);
 
