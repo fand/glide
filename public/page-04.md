@@ -1,5 +1,6 @@
 ---
 transition: glitch_slide
+duration: 1
 ---
 # Page4
 

@@ -56,7 +56,7 @@ async function load(event: any, index: number) {
   event.sender.send(
     "set-transition",
     index,
-    fm.attributes["transition"] ?? "crossfade",
-    fm.attributes["duration"] ?? 1.0
+    fm.attributes["transition"] ?? "swipe",
+    fm.attributes["duration"] ?? 0.3
   );
 }

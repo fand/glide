@@ -1,6 +1,5 @@
 ---
-transition: crossfade
-duration: 0.3
+transition: swipe
 theme: blue
 ---
 # Page1

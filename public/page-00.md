@@ -1,5 +1,5 @@
 ---
-transition: crossfade
+transition: swipe
 theme: red
 ---
 

@@ -1,5 +1,6 @@
 ---
 transition: zoom_blur
+duration: 0.8
 ---
 # Page3
 

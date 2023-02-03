@@ -14,6 +14,7 @@ fn transition_to_index(name: &str) -> f32 {
         "zoom" => 1.0,
         "zoom_blur" => 2.0,
         "glitch_slide" => 3.0,
+        "swipe" => 4.0,
         _ => 0.0,
     }
 }
@@ -165,6 +166,15 @@ vec4 glitch_slide(vec2 uv, int page1, int page2, float t) {
     return mix(c1, c2, smoothstep(.45, .55, t));
 }
 
+vec4 swipe(vec2 uv, int page1, int page2, float t) {
+    uv.x += t;
+    if (uv.x < 1.) {
+        return readTex(uv, page1);
+    } else {
+        return readTex(uv - vec2(1, 0), page2);
+    }
+}
+
 void main() {
     vec2 uv = v_uv;
 
@@ -182,8 +192,10 @@ void main() {
         case 1: color = zoom(uv, page1, page2, t); break;
         case 2: color = zoom_blur(uv, page1, page2, t); break;
         case 3: color = glitch_slide(uv, page1, page2, t); break;
+        case 4: color = swipe(uv, page1, page2, t); break;
         default: color = crossfade(uv, page1, page2, t); break;
     }
+    // color = swipe(uv, page1, page2, t);
 
     color.rgb /= color.a;
     color.a = color.a == 0.0 ? 0.0 : 1.0;
@@ -385,7 +397,7 @@ impl GLApp {
             state.prev_page = args[0].clone().float().unwrap() as u32;
             state.page = args[1].clone().float().unwrap() as u32;
             state.transition_index = transition_to_index(&args[2].clone().string().unwrap());
-            state.transition_duration = args[3].clone().float().unwrap_or(1.0);
+            state.transition_duration = args[3].clone().float().unwrap_or(0.3);
         }
     }
 

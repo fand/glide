@@ -1,6 +1,6 @@
 ---
 transition: zoom
-duration: 2
+duration: 1
 ---
 # Page2
 
