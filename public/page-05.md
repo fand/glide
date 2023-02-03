@@ -1,8 +1,7 @@
 ---
-theme: red_white
+transition: swipe
+theme: yellow_black
 ---
-<h1 class="center" style="font-size: 192px;">
-    Kyoto.js<br/>
-    引退します！！！<br/>
-    ！！！！！！！！
-</h1>
+
+<h1 class="center">前回のKyoto.js</h1>
+

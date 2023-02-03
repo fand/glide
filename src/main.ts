@@ -56,6 +56,10 @@ const themes: Record<string, Theme> = {
     fg: WHITE,
     bg: BLACK,
   },
+  black_red: {
+    fg: RED,
+    bg: BLACK,
+  },
 };
 
 // ---------------------------------------------------------------------

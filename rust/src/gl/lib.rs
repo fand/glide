@@ -268,8 +268,8 @@ impl GLApp {
 
     pub fn run(&self) -> Result<(), String> {
         let win = WindowConfig::default()
-            .size(1920, 1080)
-            // .maximized(true)
+            // .size(1920, 1080)
+            .maximized(true)
             .always_on_top(true)
             .mouse_passthrough(true)
             .title("GL!")
