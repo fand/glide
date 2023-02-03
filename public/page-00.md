@@ -1,4 +1,7 @@
 ---
 transition: crossfade
+theme: red
 ---
-# 発表スライド作ってみた
+
+<h1 class="center">発表スライド作ってみた</h1>
+

@@ -1,6 +1,7 @@
 ---
 transition: crossfade
 duration: 0.3
+theme: blue
 ---
 # Page1
 
