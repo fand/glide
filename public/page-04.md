@@ -1,9 +1,8 @@
 ---
-transition: glitch_slide
-duration: 1
 ---
-# Page4
+# 過去作: jovi-jovi
 
-this is page 4
+<img src="jovi.gif" class="center w-20"/>
 
-![](cat.gif)
+Webアプリ
+(Rustの練習で作った)

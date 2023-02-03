@@ -1,9 +1,9 @@
 ---
-transition: zoom_blur
-duration: 0.8
 ---
-# Page3
+# 過去作: REACT-VFX
 
-this is page 3
+<img src="react-vfx.gif" class="center w-80"/>
 
-![](doge.gif)
+Reactアプリ内で画像や動画に映像エフェクトをかけるライブラリ
+
+

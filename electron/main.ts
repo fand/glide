@@ -48,6 +48,7 @@ function createWindow() {
     },
   });
   win.setSimpleFullScreen(true);
+  //   win.webContents.openDevTools();i
 
   if (app.isPackaged) {
     win.loadFile(join(process.env.DIST, "index.html"));
