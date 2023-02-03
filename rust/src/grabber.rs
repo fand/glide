@@ -78,10 +78,10 @@ pub fn define_delegate() {
                 (*_this).set_ivar("_frame_count", frame_count);
 
                 if width != 0 && height != 0 {
-                    println!(
-                        ">> captured {}: {}th: ({}, {})",
-                        delegate_id, frame_count, width, height
-                    );
+                    // println!(
+                    //     ">> captured {}: {}th: ({}, {})",
+                    //     delegate_id, frame_count, width, height
+                    // );
 
                     let slice = std::slice::from_raw_parts(ptr, width * height * 4);
                     store::save_buffer(delegate_id, slice, width, height);

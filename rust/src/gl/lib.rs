@@ -158,8 +158,8 @@ void main() {
     // color = debug(uv);
     // color = debug2(uv);
 
-    int page1 = int(from_page) % 3;
-    int page2 = int(to_page) % 3;
+    int page1 = int(from_page + 1.) % 3;
+    int page2 = int(to_page + 1.) % 3;
 
     float t = clamp(time, 0., 1.);
     t = smoothstep(0., 1., t);
@@ -352,7 +352,9 @@ impl GLApp {
         if let Some(args) = msg.args {
             println!(">> osc_init: {:?}", args);
             state.page_count = args[0].clone().float().unwrap() as u32;
-            state.prev_page = state.page_count - 1;
+            state.prev_page = args[1].clone().float().unwrap() as u32;
+            state.page = args[1].clone().float().unwrap() as u32;
+            println!(">> prev_page: {}, page: {}", state.prev_page, state.page);
         }
     }
 
@@ -362,6 +364,8 @@ impl GLApp {
             state.start_time = SystemTime::now();
             state.prev_page = args[0].clone().float().unwrap() as u32;
             state.page = args[1].clone().float().unwrap() as u32;
+
+            println!(">> prev_page: {}, page: {}", state.prev_page, state.page);
         }
     }
 

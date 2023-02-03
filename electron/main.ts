@@ -69,16 +69,16 @@ app.whenReady().then(async () => {
 
   await new Promise((o) => setTimeout(o, 1000));
 
-  win.moveTop();
-
   win.webContents.send("load", 0);
   winNext.webContents.send("load", 1);
   winPrev.webContents.send("load", PAGE_COUNT - 1);
 
+  win.moveTop();
+
   const osc = new OSCClient("127.0.0.1", 9999);
 
   globalShortcut.register("Alt+Shift+Space", () => {
-    osc.send(new Bundle(["/init", PAGE_COUNT]));
+    osc.send(new Bundle(["/init", PAGE_COUNT, state.page]));
   });
 
   globalShortcut.register("Alt+Shift+Q", () => {
