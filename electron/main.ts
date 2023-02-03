@@ -77,6 +77,10 @@ app.whenReady().then(async () => {
 
   const osc = new OSCClient("127.0.0.1", 9999);
 
+  globalShortcut.register("Shift+Space", () => {
+    osc.send(new Bundle(["/init", PAGE_COUNT]));
+  });
+
   globalShortcut.register("Shift+Right", () => {
     const oldPage = state.page;
     state.page = (state.page + 1) % PAGE_COUNT;
@@ -95,12 +99,15 @@ app.whenReady().then(async () => {
 
   globalShortcut.register("Shift+Left", () => {
     const oldPage = state.page;
-    state.page = (oldPage - 1) % PAGE_COUNT;
+    state.page = (oldPage - 1 + PAGE_COUNT) % PAGE_COUNT;
 
     let [winPrev, win, winNext] = [state.winPrev, state.win, state.winNext];
 
     [winPrev, win, winNext] = [winNext, winPrev, win];
-    winPrev?.webContents.send("load", (state.page - 1) % PAGE_COUNT);
+    winPrev?.webContents.send(
+      "load",
+      (state.page - 1 + PAGE_COUNT) % PAGE_COUNT
+    );
 
     win.moveTop();
 

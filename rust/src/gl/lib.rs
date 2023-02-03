@@ -3,6 +3,7 @@ use std::time::SystemTime;
 use nannou_osc::Receiver;
 use notan::draw::*;
 use notan::prelude::*;
+use rosc;
 
 use crate::store;
 use crate::store::TexInfo;
@@ -134,7 +135,9 @@ struct State {
     texture2: Texture,
 
     start_time: SystemTime,
+    prev_page: u32,
     page: u32,
+    page_count: u32,
 
     receiver: Receiver,
 }
@@ -232,23 +235,60 @@ impl GLApp {
             texture2,
 
             start_time: SystemTime::now(),
+
+            prev_page: 0,
             page: 0,
+            page_count: 1,
 
             receiver,
         }
     }
 
     fn update(_app: &mut App, state: &mut State) {
-        if let Some((msg, addr)) = state.receiver.try_iter().next() {
-            println!(">> addr: '{}', msg: {:?}", addr, msg);
+        if let Some((msg, _)) = state.receiver.try_iter().next() {
+            let mut msgs = vec![];
+            msg.unfold(&mut msgs);
+
+            for m in msgs {
+                if m.addr == "/init" {
+                    Self::osc_init(state, m);
+                } else if m.addr == "/page" {
+                    Self::osc_page(state, m);
+                }
+            }
+        }
+    }
+
+    fn osc_init(state: &mut State, msg: rosc::OscMessage) {
+        if let Some(args) = msg.args {
+            println!(">> osc_init: {:?}", args);
+            state.page_count = args[0].clone().float().unwrap() as u32;
+            state.prev_page = state.page_count - 1;
+        }
+    }
+
+    fn osc_page(state: &mut State, msg: rosc::OscMessage) {
+        if let Some(args) = msg.args {
+            println!(">> osc_page: {:?}", args);
             state.start_time = SystemTime::now();
+            state.prev_page = args[0].clone().float().unwrap() as u32;
+            state.page = args[1].clone().float().unwrap() as u32;
         }
     }
 
     fn draw(gfx: &mut Graphics, state: &mut State) {
         let now = SystemTime::now();
         if let Ok(n) = now.duration_since(state.start_time) {
-            gfx.set_buffer_data(&state.ubo, &vec![n.as_secs_f32()]);
+            let time = n.as_secs_f32();
+            gfx.set_buffer_data(
+                &state.ubo,
+                &vec![
+                    time,
+                    state.prev_page as f32,
+                    state.page as f32,
+                    state.page_count as f32,
+                ],
+            );
         }
 
         let mut renderer = gfx.create_renderer();

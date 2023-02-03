@@ -871,6 +871,7 @@ dependencies = [
  "notan",
  "objc",
  "once_cell",
+ "rosc",
 ]
 
 [[package]]

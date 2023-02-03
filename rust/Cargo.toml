@@ -10,6 +10,7 @@ objc = "0.2.7"
 block = "0.1"
 notan = "0.9.0"
 nannou_osc = "0.18.0"
+rosc = "*"
 
 [dependencies.image]
 version = "0.24"
