@@ -8,10 +8,10 @@ import "highlight.js/styles/dark.css";
 const el = document.querySelector("#app")!;
 
 window.electronAPI.onLoad((event: any, value: number) => {
-  load(value);
+  load(event, value);
 });
 
-async function load(index: number) {
+async function load(event: any, index: number) {
   const filename = `/page-${index.toString().padStart(2, "0")}.md`;
 
   const md = await fetch(filename).then((r) => r.text());
@@ -25,4 +25,11 @@ async function load(index: number) {
     },
     langPrefix: "hljs language-",
   });
+
+  event.sender.send(
+    "set-transition",
+    index,
+    fm.attributes["transition"] ?? "crossfade",
+    fm.attributes["duration"] ?? 1.0
+  );
 }

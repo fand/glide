@@ -1,6 +1,5 @@
 ---
-title: Hello Page2
-transition_in: crossfade
+transition: zoom_blur
 ---
 # Page3
 

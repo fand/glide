@@ -3,6 +3,7 @@ import fs from "node:fs";
 import { app, BrowserWindow } from "electron";
 import { globalShortcut } from "electron";
 import { Client as OSCClient, Bundle } from "node-osc";
+import { ipcMain } from "electron";
 
 // CONSTANTS
 process.env.DIST = join(__dirname, "..");
@@ -19,6 +20,12 @@ type State = {
   win: BrowserWindow | undefined;
   winNext: BrowserWindow | undefined;
   winPrev: BrowserWindow | undefined;
+  transitionDict: {
+    [index: number]: {
+      transition: string;
+      duration: number;
+    };
+  };
 };
 
 const state: State = {
@@ -26,6 +33,7 @@ const state: State = {
   win: undefined,
   winNext: undefined,
   winPrev: undefined,
+  transitionDict: {},
 };
 
 function createWindow() {
@@ -75,6 +83,14 @@ app.whenReady().then(async () => {
 
   win.moveTop();
 
+  ipcMain.on(
+    "set-transition",
+    (e: any, index: number, transition: string, duration: number) => {
+      console.log(">> set-transition", transition, duration);
+      state.transitionDict[index] = { transition, duration };
+    }
+  );
+
   const osc = new OSCClient("127.0.0.1", 9999);
 
   globalShortcut.register("Alt+Shift+Space", () => {
@@ -85,7 +101,7 @@ app.whenReady().then(async () => {
     osc.send(new Bundle(["/kill"]));
   });
 
-  globalShortcut.register("Alt+Shift+Right", () => {
+  globalShortcut.register("Alt+Shift+Right", async () => {
     const oldPage = state.page;
     state.page = (state.page + 1) % PAGE_COUNT;
 
@@ -96,7 +112,16 @@ app.whenReady().then(async () => {
 
     win.moveTop();
 
-    osc.send(new Bundle(["/page", oldPage, state.page]));
+    const transition = state.transitionDict[oldPage];
+    osc.send(
+      new Bundle([
+        "/page",
+        oldPage,
+        state.page,
+        transition.transition,
+        transition.duration,
+      ])
+    );
 
     [state.winPrev, state.win, state.winNext] = [winPrev, win, winNext];
   });
@@ -115,7 +140,16 @@ app.whenReady().then(async () => {
 
     win.moveTop();
 
-    osc.send(new Bundle(["/page", oldPage, state.page]));
+    const transition = state.transitionDict[state.page];
+    osc.send(
+      new Bundle([
+        "/page",
+        oldPage,
+        state.page,
+        transition.transition,
+        transition.duration,
+      ])
+    );
 
     [state.winPrev, state.win, state.winNext] = [winPrev, win, winNext];
   });

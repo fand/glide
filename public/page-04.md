@@ -1,6 +1,5 @@
 ---
-title: Hello Page4
-transition_in: crossfade
+transition: glitch_slide
 ---
 # Page4
 

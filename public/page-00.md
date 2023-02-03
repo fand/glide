@@ -1,5 +1,4 @@
 ---
-title: Hello Page1
-transition_in: crossfade
+transition: crossfade
 ---
 # 発表スライド作ってみた

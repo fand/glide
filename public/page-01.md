@@ -1,6 +1,6 @@
 ---
-title: Hello Page1
-transition_in: crossfade
+transition: crossfade
+duration: 0.3
 ---
 # Page1
 

@@ -1,5 +1,5 @@
 export interface IElectronAPI {
-  onLoad: (callback: any) => void;
+  onLoad: (callback: any) => Promise<string>;
 }
 
 declare global {

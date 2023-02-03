@@ -8,6 +8,16 @@ use rosc;
 use crate::store;
 use crate::store::TexInfo;
 
+fn transition_to_index(name: &str) -> f32 {
+    match name {
+        "crossfade" => 0.0,
+        "zoom" => 1.0,
+        "zoom_blur" => 2.0,
+        "glitch_slide" => 3.0,
+        _ => 0.0,
+    }
+}
+
 //language=glsl
 const VERT: ShaderSource = notan::vertex_shader! {
     r#"
@@ -42,6 +52,9 @@ layout(set = 0, binding = 0) uniform Locals {
     float from_page;
     float to_page;
     float page_count;
+
+    float transition_index;
+    float transition_duration;
 };
 
 vec4 readTex(vec2 uv, int i) {
@@ -161,13 +174,16 @@ void main() {
     int page1 = int(from_page + 1.) % 3;
     int page2 = int(to_page + 1.) % 3;
 
-    float t = clamp(time, 0., 1.);
+    float t = clamp(time / transition_duration, 0., 1.);
     t = smoothstep(0., 1., t);
 
-    color = crossfade(uv, page1, page2, t);
-    // color = zoom(uv, page1, page2, t);
-    // color = zoom_blur(uv, page1, page2, t);
-    // color = glitch_slide(uv, page1, page2, t);
+    switch (int(transition_index)) {
+        case 0: color = crossfade(uv, page1, page2, t); break;
+        case 1: color = zoom(uv, page1, page2, t); break;
+        case 2: color = zoom_blur(uv, page1, page2, t); break;
+        case 3: color = glitch_slide(uv, page1, page2, t); break;
+        default: color = crossfade(uv, page1, page2, t); break;
+    }
 
     color.rgb /= color.a;
     color.a = color.a == 0.0 ? 0.0 : 1.0;
@@ -225,6 +241,8 @@ struct State {
     prev_page: u32,
     page: u32,
     page_count: u32,
+    transition_index: f32,
+    transition_duration: f32,
 
     receiver: Receiver,
 }
@@ -326,6 +344,8 @@ impl GLApp {
             prev_page: 0,
             page: 0,
             page_count: 1,
+            transition_index: 0.0,
+            transition_duration: 0.0,
 
             receiver,
         }
@@ -364,8 +384,8 @@ impl GLApp {
             state.start_time = SystemTime::now();
             state.prev_page = args[0].clone().float().unwrap() as u32;
             state.page = args[1].clone().float().unwrap() as u32;
-
-            println!(">> prev_page: {}, page: {}", state.prev_page, state.page);
+            state.transition_index = transition_to_index(&args[2].clone().string().unwrap());
+            state.transition_duration = args[3].clone().float().unwrap_or(1.0);
         }
     }
 
@@ -380,6 +400,8 @@ impl GLApp {
                     state.prev_page as f32,
                     state.page as f32,
                     state.page_count as f32,
+                    state.transition_index,
+                    state.transition_duration,
                 ],
             );
         }

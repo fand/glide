@@ -1,6 +1,6 @@
 ---
-title: Hello Page2
-transition_in: crossfade
+transition: zoom
+duration: 2
 ---
 # Page2
 
