@@ -105,11 +105,7 @@ impl Grabber {
 
     pub fn start(&self) {
         let instance_id = self.instance_id;
-        let title_pattern = if instance_id == 0 {
-            "GLIDE-ELECTRON WIN 1"
-        } else {
-            "GLIDE-ELECTRON WIN 2"
-        };
+        let title_pattern = format!("GLIDE-ELECTRON WIN {}", instance_id);
 
         let block = ConcreteBlock::new(move |shareable_content: id, _err: id| {
             let windows: id = unsafe { msg_send![shareable_content, windows] };
@@ -134,7 +130,7 @@ impl Grabber {
                 let title = obj_to_string(unsafe { msg_send![w, title] }, "NO TITLE");
                 println!(">> window {}: {} - {}", i, owning_app_name, title);
 
-                if title.contains(title_pattern) {
+                if title.contains(&title_pattern) {
                     window = w;
                 }
             }

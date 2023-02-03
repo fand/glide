@@ -33,6 +33,7 @@ function createWindow() {
     icon: join(process.env.PUBLIC, "logo.svg"),
     frame: false,
     // simpleFullscreen: true,
+    opacity: 0.5,
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: true,
@@ -65,13 +66,18 @@ app.whenReady().then(async () => {
 
   await new Promise((o) => win.webContents.on("did-finish-load", o));
   await new Promise((o) => winNext.webContents.on("did-finish-load", o));
+  await new Promise((o) => winPrev.webContents.on("did-finish-load", o));
+
+  await new Promise((o) => setTimeout(o, 1000));
+  console.log(">>>>>>>>>>>> go!");
 
   win.setPosition(0, 0);
-  winNext.setPosition(-3000, 0);
-  winPrev.setPosition(-3000, 0);
+  //   winNext.setPosition(-3000, 0);
+  //   winPrev.setPosition(-3000, 0);
 
   win.webContents.send("load", 0);
   winNext.webContents.send("load", 1);
+  winPrev.webContents.send("load", PAGE_COUNT - 1);
 
   const osc = new OSCClient("127.0.0.1", 9999);
 
@@ -84,9 +90,9 @@ app.whenReady().then(async () => {
     [winPrev, win, winNext] = [win, winNext, winPrev];
     winNext?.webContents.send("load", (state.page + 1) % PAGE_COUNT);
 
-    winPrev?.setPosition(-3000, 0);
+    winPrev?.setPosition(1900, 0);
     win?.setPosition(0, 0);
-    winNext?.setPosition(-3000, 0);
+    winNext?.setPosition(1900, 0);
 
     osc.send(new Bundle(["/page", oldPage, state.page]));
 
@@ -102,9 +108,9 @@ app.whenReady().then(async () => {
     [winPrev, win, winNext] = [winNext, winPrev, win];
     winPrev?.webContents.send("load", (state.page - 1) % PAGE_COUNT);
 
-    winPrev?.setPosition(-3000, 0);
+    winPrev?.setPosition(1900, 0);
     win?.setPosition(0, 0);
-    winNext?.setPosition(-3000, 0);
+    winNext?.setPosition(1900, 0);
 
     osc.send(new Bundle(["/page", oldPage, state.page]));
 

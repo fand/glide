@@ -5,6 +5,7 @@ use notan::draw::*;
 use notan::prelude::*;
 
 use crate::store;
+use crate::store::TexInfo;
 
 //language=glsl
 const VERT: ShaderSource = notan::vertex_shader! {
@@ -31,30 +32,94 @@ precision mediump float;
 layout(location = 0) in vec2 v_uv;
 layout(location = 0) out vec4 color;
 
-layout(binding = 0) uniform usampler2D tex1;
-layout(binding = 1) uniform usampler2D tex2;
+layout(binding = 0) uniform usampler2D tex0;
+layout(binding = 1) uniform usampler2D tex1;
+layout(binding = 2) uniform usampler2D tex2;
 
 layout(set = 0, binding = 0) uniform Locals {
     float time;
 };
 
+vec4 debug(vec2 uv) {
+    int id = int(step(0.5, uv.y) * 2 + step(0.5, uv.x));
+    if (id == 0) {
+        return texture(tex0, fract(uv * 2.));
+    } else if (id == 1) {
+        return texture(tex1, fract(uv * 2.));
+    } else if (id == 2) {
+        return texture(tex2, fract(uv * 2.));
+    } else {
+        return vec4(1, 0, 0, 1);
+    }
+}
+
+vec4 debug2(vec2 uv) {
+    int id = int(step(0.5, uv.y) * 2 + step(0.5, uv.x));
+    if (id == 0) {
+        return vec4(0, 0, 1, 1);
+    } else if (id == 1) {
+        return vec4(0, 1, 1, 1);
+    } else if (id == 2) {
+        return vec4(0, 1, 0, 1);
+    } else {
+        return vec4(1, 0, 0, 1);
+    }
+}
+
 void main() {
     vec2 uv = v_uv;
 
-    vec4 c1 = texture(tex1, uv);
-    vec4 c2 = texture(tex2, uv);
+    // vec4 c0 = texture(tex0, uv);
+    // vec4 c1 = texture(tex1, uv);
+    // vec4 c2 = texture(tex2, uv);
 
     // if (c1.a != 0.0) { c1.rgb /= c1.a; }
     // if (c2.a != 0.0) { c2.rgb /= c2.a; }
 
-    color = mix(c1, c2, fract(time));
+    // color = mix(c1, c2, fract(time));
+
+    color = debug(uv);
+    // color = debug2(uv);
+
     color.rgb /= color.a;
     color.a = color.a == 0.0 ? 0.0 : 0.8;
-
     color.rgb *= color.a;
 }
 "#
 };
+
+fn load_texture_from_image(gfx: &mut Graphics, src: &str) -> Result<Texture, String> {
+    let image1 = image::open(src).unwrap();
+    gfx.create_texture()
+        .from_bytes(
+            image1.as_bytes(),
+            image1.width() as i32,
+            image1.height() as i32,
+        )
+        .with_premultiplied_alpha()
+        .build()
+}
+
+fn update_texture(gfx: &mut Graphics, texture: &mut Texture, tex: &TexInfo, id: usize) {
+    let (w, h) = (texture.width() as usize, texture.height() as usize);
+    if w != tex.width || h != tex.height {
+        println!(
+            ">> Texture {} size changed: ({}, {}) -> ({}, {})",
+            w, h, tex.width, tex.height, id
+        );
+        *texture = gfx
+            .create_texture()
+            .from_bytes(&tex.buf, tex.width as i32, tex.height as i32)
+            .with_premultiplied_alpha()
+            .build()
+            .unwrap();
+    } else {
+        gfx.update_texture(texture)
+            .with_data(&tex.buf)
+            .update()
+            .unwrap();
+    }
+}
 
 #[derive(AppState)]
 struct State {
@@ -64,6 +129,7 @@ struct State {
     ibo: Buffer,
     ubo: Buffer,
 
+    texture0: Texture,
     texture1: Texture,
     texture2: Texture,
 
@@ -84,7 +150,7 @@ impl GLApp {
         let win = WindowConfig::default()
             .size(1920, 1080)
             // .maximized(true)
-            // .always_on_top(true)
+            .always_on_top(true)
             .mouse_passthrough(true)
             .title("GL!")
             .decorations(false)
@@ -110,8 +176,9 @@ impl GLApp {
             .from(&VERT, &FRAG)
             .with_vertex_info(&vertex_info)
             .with_color_blend(BlendMode::NONE)
-            .with_texture_location(0, "tex1")
-            .with_texture_location(1, "tex2")
+            .with_texture_location(0, "tex0")
+            .with_texture_location(1, "tex1")
+            .with_texture_location(2, "tex2")
             .build()
             .expect("failed to compile pipeline");
         // .unwrap();
@@ -141,29 +208,9 @@ impl GLApp {
             .build()
             .unwrap();
 
-        let image1 = image::open("src/gl/ferris.png").unwrap();
-        let image2 = image::open("src/gl/gopher.png").unwrap();
-
-        let texture1 = gfx
-            .create_texture()
-            .from_bytes(
-                image1.as_bytes(),
-                image1.width() as i32,
-                image1.height() as i32,
-            )
-            .with_premultiplied_alpha()
-            .build()
-            .unwrap();
-        let texture2 = gfx
-            .create_texture()
-            .from_bytes(
-                image2.as_bytes(),
-                image2.width() as i32,
-                image2.height() as i32,
-            )
-            .with_premultiplied_alpha()
-            .build()
-            .unwrap();
+        let texture0 = load_texture_from_image(gfx, "src/gl/ferris.png").unwrap();
+        let texture1 = load_texture_from_image(gfx, "src/gl/ferris.png").unwrap();
+        let texture2 = load_texture_from_image(gfx, "src/gl/ferris.png").unwrap();
 
         let ubo = gfx
             .create_uniform_buffer(0, "Locals")
@@ -180,6 +227,7 @@ impl GLApp {
             ibo,
             ubo,
 
+            texture0,
             texture1,
             texture2,
 
@@ -206,57 +254,21 @@ impl GLApp {
         let mut renderer = gfx.create_renderer();
 
         if let Some(tex) = store::get_buffer(0) {
-            let (w, h) = (
-                state.texture1.width() as usize,
-                state.texture1.height() as usize,
-            );
-            if w != tex.width || h != tex.height {
-                println!(
-                    ">> tex1 size changed: ({}, {}) -> ({}, {})",
-                    w, h, tex.width, tex.height
-                );
-                state.texture1 = gfx
-                    .create_texture()
-                    .from_bytes(&tex.buf, tex.width as i32, tex.height as i32)
-                    .with_premultiplied_alpha()
-                    .build()
-                    .unwrap();
-            } else {
-                gfx.update_texture(&mut state.texture1)
-                    .with_data(&tex.buf)
-                    .update()
-                    .unwrap();
-            }
+            update_texture(gfx, &mut state.texture0, tex, 0);
         }
         if let Some(tex) = store::get_buffer(1) {
-            let (w, h) = (
-                state.texture2.width() as usize,
-                state.texture2.height() as usize,
-            );
-            if w != tex.width || h != tex.height {
-                println!(
-                    ">> tex2 size changed: ({}, {}) -> ({}, {})",
-                    w, h, tex.width, tex.height
-                );
-                state.texture2 = gfx
-                    .create_texture()
-                    .from_bytes(&tex.buf, tex.width as i32, tex.height as i32)
-                    .with_premultiplied_alpha()
-                    .build()
-                    .unwrap();
-            } else {
-                gfx.update_texture(&mut state.texture2)
-                    .with_data(&tex.buf)
-                    .update()
-                    .unwrap();
-            }
+            update_texture(gfx, &mut state.texture1, tex, 1);
+        }
+        if let Some(tex) = store::get_buffer(2) {
+            update_texture(gfx, &mut state.texture2, tex, 2);
         }
 
         gfx.clean();
         renderer.begin(Some(&state.clear_options));
         renderer.set_pipeline(&state.pipeline);
-        renderer.bind_texture(0, &state.texture1);
-        renderer.bind_texture(1, &state.texture2);
+        renderer.bind_texture(0, &state.texture0);
+        renderer.bind_texture(1, &state.texture1);
+        renderer.bind_texture(2, &state.texture2);
         renderer.bind_buffers(&[&state.vbo, &state.ibo]);
         renderer.draw(0, 6);
         renderer.end();
