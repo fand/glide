@@ -2,6 +2,7 @@ import { join } from "node:path";
 import fs from "node:fs";
 import { app, BrowserWindow } from "electron";
 import { globalShortcut } from "electron";
+import { Client as OSCClient, Bundle } from "node-osc";
 
 // CONSTANTS
 process.env.DIST = join(__dirname, "..");
@@ -72,7 +73,10 @@ app.whenReady().then(async () => {
   win.webContents.send("load", 0);
   winNext.webContents.send("load", 1);
 
+  const osc = new OSCClient("127.0.0.1", 9999);
+
   globalShortcut.register("Shift+Right", () => {
+    const oldPage = state.page;
     state.page = (state.page + 1) % PAGE_COUNT;
 
     let [winPrev, win, winNext] = [state.winPrev, state.win, state.winNext];
@@ -84,11 +88,14 @@ app.whenReady().then(async () => {
     win?.setPosition(0, 0);
     winNext?.setPosition(-3000, 0);
 
+    osc.send(new Bundle(["/page", oldPage, state.page]));
+
     [state.winPrev, state.win, state.winNext] = [winPrev, win, winNext];
   });
 
   globalShortcut.register("Shift+Left", () => {
-    state.page = (state.page - 1) % PAGE_COUNT;
+    const oldPage = state.page;
+    state.page = (oldPage - 1) % PAGE_COUNT;
 
     let [winPrev, win, winNext] = [state.winPrev, state.win, state.winNext];
 
@@ -98,6 +105,8 @@ app.whenReady().then(async () => {
     winPrev?.setPosition(-3000, 0);
     win?.setPosition(0, 0);
     winNext?.setPosition(-3000, 0);
+
+    osc.send(new Bundle(["/page", oldPage, state.page]));
 
     [state.winPrev, state.win, state.winNext] = [winPrev, win, winNext];
   });

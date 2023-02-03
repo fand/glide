@@ -66,7 +66,9 @@ struct State {
 
     texture1: Texture,
     texture2: Texture,
+
     start_time: SystemTime,
+    page: u32,
 
     receiver: Receiver,
 }
@@ -81,15 +83,17 @@ impl GLApp {
     pub fn run(&self) -> Result<(), String> {
         let win = WindowConfig::default()
             .size(1920, 1080)
-            .maximized(true)
-            .always_on_top(true)
+            // .maximized(true)
+            // .always_on_top(true)
             .mouse_passthrough(true)
+            .title("GL!")
             .decorations(false)
             .transparent(true);
 
         notan::init_with(|gfx: &mut Graphics| GLApp::setup(gfx))
             .add_config(win)
             .add_config(DrawConfig)
+            .update(Self::update)
             .draw(Self::draw)
             .build()
     }
@@ -180,21 +184,20 @@ impl GLApp {
             texture2,
 
             start_time: SystemTime::now(),
+            page: 0,
 
             receiver,
         }
     }
 
-    fn draw(gfx: &mut Graphics, state: &mut State) {
-        // let mut a = vec![];
-        if let Some(p) = state.receiver.try_iter().next() {
-            println!(">> {:?}", p);
+    fn update(_app: &mut App, state: &mut State) {
+        if let Some((msg, addr)) = state.receiver.try_iter().next() {
+            println!(">> addr: '{}', msg: {:?}", addr, msg);
+            state.start_time = SystemTime::now();
         }
-        // for (p, addr) in state.receiver.iter() {
+    }
 
-        //     //     a.push(addr);
-        // }
-
+    fn draw(gfx: &mut Graphics, state: &mut State) {
         let now = SystemTime::now();
         if let Ok(n) = now.duration_since(state.start_time) {
             gfx.set_buffer_data(&state.ubo, &vec![n.as_secs_f32()]);
