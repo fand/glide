@@ -39,7 +39,17 @@ layout(binding = 2) uniform usampler2D tex2;
 
 layout(set = 0, binding = 0) uniform Locals {
     float time;
+    float from_page;
+    float to_page;
+    float page_count;
 };
+
+vec4 readTex(vec2 uv, int i) {
+    if (i == 0) { return texture(tex0, uv).bgra; }
+    if (i == 1) { return texture(tex1, uv).bgra; }
+    if (i == 2) { return texture(tex2, uv).bgra; }
+    return vec4(1, 1, 0, 1);
+}
 
 vec4 debug(vec2 uv) {
     int id = int(step(0.5, uv.y) * 2 + step(0.5, uv.x));
@@ -67,23 +77,100 @@ vec4 debug2(vec2 uv) {
     }
 }
 
+vec4 crossfade(vec2 uv, int page1, int page2, float t) {
+    return mix(readTex(uv, page1), readTex(uv, page2), t);
+}
+
+vec4 zoom(vec2 uv, int page1, int page2, float t) {
+    vec2 uv1 = (uv - .5) * (1. - t) + .5;
+    vec2 uv2 = (uv - .5) / (t * 0.999 + 0.001) + .5;
+    return mix(readTex(uv1, page1), readTex(fract(uv2), page2), t);
+}
+vec4 zoom_blur(vec2 uv, int page1, int page2, float t) {
+    // vec2 uv1 = (uv - .5) * (1. - t) + .5;
+    // vec2 uv2 = (uv - .5) / (t * 0.999 + 0.001) + .5;
+
+    float blur = sin(t * 3.141593);
+
+    vec2 offset = vec2(t * 2. - 1., 0) * 0.01 * blur;
+
+    vec4 c1, c2;
+
+    for (float i = 0.; i < 16.; i += 1.) {
+        vec2 uvr = ((uv - .5) * (1. - blur * i * 0.02) + offset * i) + .5;
+        vec2 uvg = ((uv - .5) * (1. - blur * i * 0.04) + offset * i) + .5;
+        vec2 uvb = ((uv - .5) * (1. - blur * i * 0.05) + offset * i) + .5;
+
+        {
+            vec2 ra = readTex(uvr, page1).ra;
+            vec2 ga = readTex(uvg, page1).ga;
+            vec2 ba = readTex(uvb, page1).ba;
+            c1 += vec4(ra.x, ga.x, ba.x, (ra.y + ga.y + ba.y) / 3.);
+        }
+
+        {
+            vec2 ra = readTex(uvr, page2).ra;
+            vec2 ga = readTex(uvg, page2).ga;
+            vec2 ba = readTex(uvb, page2).ba;
+            c2 += vec4(ra.x, ga.x, ba.x, (ra.y + ga.y + ba.y) / 3.);
+        }
+    }
+    c1 /= 16.;
+    c2 /= 16.;
+
+    return mix(c1, c2, t);
+}
+vec4 glitch_slide(vec2 uv, int page1, int page2, float t) {
+    float y = floor(uv.y * 53.) / 53.;
+    float n = sin(y * 7.) * sin(y * 17.) * sin(y * 59.) * 0.5 + 0.5;
+
+    vec4 c1, c2;
+    {
+        vec2 uvr = uv, uvg = uv, uvb = uv;
+        uvr.x = fract(uvr.x + clamp(t * 1.8 - n * 0.2 - 0.1, 0., 1.));
+        uvg.x = fract(uvg.x + clamp(t * 1.8 - n * 0.2, 0., 1.));
+        uvb.x = fract(uvb.x + clamp(t * 1.8 - n * 0.2 + 0.1, 0., 1.));
+
+        vec2 ra = readTex(uvr, page1).ra;
+        vec2 ga = readTex(uvg, page1).ga;
+        vec2 ba = readTex(uvb, page1).ba;
+        c1 = vec4(ra.x, ga.x, ba.x, (ra.y + ga.y + ba.y) / 3.);
+    }
+
+    {
+        vec2 uvr = uv, uvg = uv, uvb = uv;
+        uvr.x = fract(uvr.x + clamp(t * 1.8 - n * 0.2 - 0.1, 0., 1.));
+        uvg.x = fract(uvg.x + clamp(t * 1.8 - n * 0.2, 0., 1.));
+        uvb.x = fract(uvb.x + clamp(t * 1.8 - n * 0.2 + 0.1, 0., 1.));
+
+        vec2 ra = readTex(uvr, page2).ra;
+        vec2 ga = readTex(uvg, page2).ga;
+        vec2 ba = readTex(uvb, page2).ba;
+        c2 = vec4(ra.x, ga.x, ba.x, (ra.y + ga.y + ba.y) / 3.);
+    }
+
+    return mix(c1, c2, smoothstep(.45, .55, t));
+}
+
 void main() {
     vec2 uv = v_uv;
 
-    // vec4 c0 = texture(tex0, uv);
-    // vec4 c1 = texture(tex1, uv);
-    // vec4 c2 = texture(tex2, uv);
-
-    // if (c1.a != 0.0) { c1.rgb /= c1.a; }
-    // if (c2.a != 0.0) { c2.rgb /= c2.a; }
-
-    // color = mix(c1, c2, fract(time));
-
-    color = debug(uv);
+    // color = debug(uv);
     // color = debug2(uv);
 
+    int page1 = int(from_page) % 3;
+    int page2 = int(to_page) % 3;
+
+    float t = clamp(time, 0., 1.);
+    t = smoothstep(0., 1., t);
+
+    color = crossfade(uv, page1, page2, t);
+    // color = zoom(uv, page1, page2, t);
+    // color = zoom_blur(uv, page1, page2, t);
+    // color = glitch_slide(uv, page1, page2, t);
+
     color.rgb /= color.a;
-    color.a = color.a == 0.0 ? 0.0 : 0.8;
+    color.a = color.a == 0.0 ? 0.0 : 1.0;
     color.rgb *= color.a;
 }
 "#
@@ -244,7 +331,7 @@ impl GLApp {
         }
     }
 
-    fn update(_app: &mut App, state: &mut State) {
+    fn update(app: &mut App, state: &mut State) {
         if let Some((msg, _)) = state.receiver.try_iter().next() {
             let mut msgs = vec![];
             msg.unfold(&mut msgs);
@@ -254,6 +341,8 @@ impl GLApp {
                     Self::osc_init(state, m);
                 } else if m.addr == "/page" {
                     Self::osc_page(state, m);
+                } else if m.addr == "/kill" {
+                    app.exit();
                 }
             }
         }

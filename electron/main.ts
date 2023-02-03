@@ -77,11 +77,15 @@ app.whenReady().then(async () => {
 
   const osc = new OSCClient("127.0.0.1", 9999);
 
-  globalShortcut.register("Shift+Space", () => {
+  globalShortcut.register("Alt+Shift+Space", () => {
     osc.send(new Bundle(["/init", PAGE_COUNT]));
   });
 
-  globalShortcut.register("Shift+Right", () => {
+  globalShortcut.register("Alt+Shift+Q", () => {
+    osc.send(new Bundle(["/kill"]));
+  });
+
+  globalShortcut.register("Alt+Shift+Right", () => {
     const oldPage = state.page;
     state.page = (state.page + 1) % PAGE_COUNT;
 
@@ -97,7 +101,7 @@ app.whenReady().then(async () => {
     [state.winPrev, state.win, state.winNext] = [winPrev, win, winNext];
   });
 
-  globalShortcut.register("Shift+Left", () => {
+  globalShortcut.register("Alt+Shift+Left", () => {
     const oldPage = state.page;
     state.page = (oldPage - 1 + PAGE_COUNT) % PAGE_COUNT;
 
