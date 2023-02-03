@@ -1,6 +1,5 @@
 ---
 transition: swipe
-theme: blue
 ---
 # Page1
 

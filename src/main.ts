@@ -8,18 +8,53 @@ import "highlight.js/styles/dark.css";
 type Theme = { fg: string; bg: string };
 
 const defaultTheme = {
-  fg: "#000022",
+  fg: "#073B4C",
   bg: "#FFFFFF",
 };
 
+const WHITE = "#EDEDFF";
+const RED = "#EF476F";
+const YELLOW = "#FFD166";
+const GREEN = "#06D6A0";
+const BLUE = "#118AB2";
+const BLACK = "#073B4C";
+
 const themes: Record<string, Theme> = {
-  red: {
-    fg: "#FFFF00",
-    bg: "#FF0000",
+  red_white: {
+    fg: WHITE,
+    bg: RED,
   },
-  blue: {
-    fg: "#FF0000",
-    bg: "#0000FF",
+  red_black: {
+    fg: BLACK,
+    bg: RED,
+  },
+  blue_white: {
+    fg: WHITE,
+    bg: BLUE,
+  },
+  blue_black: {
+    fg: BLACK,
+    bg: BLUE,
+  },
+  yellow_white: {
+    fg: WHITE,
+    bg: YELLOW,
+  },
+  yellow_black: {
+    fg: BLACK,
+    bg: YELLOW,
+  },
+  green_white: {
+    fg: WHITE,
+    bg: GREEN,
+  },
+  green_black: {
+    fg: BLACK,
+    bg: GREEN,
+  },
+  black_white: {
+    fg: WHITE,
+    bg: BLACK,
   },
 };
 
