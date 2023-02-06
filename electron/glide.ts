@@ -4,8 +4,9 @@ import { globalShortcut } from "electron";
 import { Client as OSCClient, Bundle } from "node-osc";
 import { ipcMain } from "electron";
 
-function createWindow() {
+function createWindow(title: string) {
   const win = new BrowserWindow({
+    title,
     icon: join(process.env.PUBLIC, "logo.svg"),
     frame: false,
     opacity: 0.9,
@@ -56,13 +57,9 @@ export class Glide {
   };
 
   async init() {
-    const win = createWindow();
-    const winNext = createWindow();
-    const winPrev = createWindow();
-
-    win.title = "GLIDE-ELECTRON WIN 1";
-    winNext.title = "GLIDE-ELECTRON WIN 2";
-    winPrev.title = "GLIDE-ELECTRON WIN 0";
+    const win = createWindow("GLIDE-ELECTRON WIN 1");
+    const winNext = createWindow("GLIDE-ELECTRON WIN 2");
+    const winPrev = createWindow("GLIDE-ELECTRON WIN 0");
 
     win.on("close", () => (this.win = undefined));
     winNext.on("close", () => (this.winNext = undefined));
