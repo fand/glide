@@ -1,6 +1,6 @@
 ---
 theme: black_red
-transition: glitch_slide
+transition: glitch
 duration: 2
 ---
 
