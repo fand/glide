@@ -261,7 +261,7 @@ fn update_texture(gfx: &mut Graphics, texture: &mut Texture, tex: &TexInfo, id: 
     if w != tex.width || h != tex.height {
         println!(
             ">> Texture {} size changed: ({}, {}) -> ({}, {})",
-            w, h, tex.width, tex.height, id
+            id, w, h, tex.width, tex.height,
         );
         *texture = gfx
             .create_texture()

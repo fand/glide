@@ -53,7 +53,6 @@ pub fn define_delegate() {
     let mut decl = ClassDecl::new("ScreenCaptureDelegate", class!(NSObject)).unwrap();
     unsafe {
         decl.add_ivar::<u32>("_delegate_id");
-        decl.add_ivar::<u32>("_frame_count");
 
         extern "C" fn capture_stream(
             _this: &mut Object,
@@ -67,22 +66,13 @@ pub fn define_delegate() {
             let width = unsafe { ffi::CVPixelBufferGetWidth(pixel_buffer) };
             let height = unsafe { ffi::CVPixelBufferGetHeight(pixel_buffer) };
 
+            let delegate_id: u32 = unsafe { *_this.get_ivar("_delegate_id") };
+
             unsafe {
                 ffi::CVPixelBufferLockBaseAddress(pixel_buffer, 1);
+
                 let ptr = ffi::CVPixelBufferGetBaseAddress(pixel_buffer) as *mut u8;
-
-                let delegate_id: u32 = *_this.get_ivar("_delegate_id");
-
-                let mut frame_count: u32 = *_this.get_ivar("_frame_count");
-                frame_count += 1;
-                (*_this).set_ivar("_frame_count", frame_count);
-
                 if width != 0 && height != 0 {
-                    // println!(
-                    //     ">> captured {}: {}th: ({}, {})",
-                    //     delegate_id, frame_count, width, height
-                    // );
-
                     let slice = std::slice::from_raw_parts(ptr, width * height * 4);
                     store::save_buffer(delegate_id, slice, width, height);
                 }
@@ -108,6 +98,7 @@ impl Grabber {
         let title_pattern = format!("GLIDE-ELECTRON WIN {}", instance_id);
 
         let block = ConcreteBlock::new(move |shareable_content: id, _err: id| {
+            // Get the window that matches title_pattern.
             let windows: id = unsafe { msg_send![shareable_content, windows] };
             let windows = filter_windows(windows);
 
@@ -141,14 +132,14 @@ impl Grabber {
             let height = f.size.height;
             println!(">>>>> window size: {} x {}", width, height);
 
-            println!(">> create filter");
+            // Cfreate content filter
             let filter: id = unsafe {
                 let filter: id = msg_send![class!(SCContentFilter), alloc];
                 let _: () = msg_send![filter, initWithDesktopIndependentWindow: window];
                 filter
             };
 
-            println!(">> create stream config");
+            // Create stream config
             let stream_config: id = unsafe {
                 let stream_config: id = msg_send![class!(SCStreamConfiguration), alloc];
                 let stream_config: id = msg_send![stream_config, init];
@@ -175,7 +166,7 @@ impl Grabber {
                 stream_config
             };
 
-            println!(">> create stream");
+            // Create stream
             let stream: id = unsafe {
                 let stream: id = msg_send![class!(SCStream), alloc];
                 let stream: id = msg_send![stream, init];
@@ -183,14 +174,13 @@ impl Grabber {
                 stream
             };
 
-            println!(">> create delegate");
+            // Create delegate instance
             let delegate: id = unsafe {
                 let delegate: id = msg_send![class!(ScreenCaptureDelegate), alloc];
                 let del = msg_send![delegate, init];
 
-                // Init properties
+                // Init property
                 let _: () = (*delegate).set_ivar("_delegate_id", instance_id);
-                let _: () = (*delegate).set_ivar("_frame_count", 0 as u32);
 
                 del
             };
@@ -202,13 +192,13 @@ impl Grabber {
             };
             assert!(did_add_output);
 
-            println!(">> create completion ahndler");
+            // Create completion handler
             let block = ConcreteBlock::new(move |err: id| {
                 println!(">> error: {:?}", err);
                 assert!(err.is_null());
             });
 
-            println!(">> start capture");
+            // Start capture
             let _: () = unsafe { msg_send![stream, startCaptureWithCompletionHandler: block] };
         });
 
@@ -216,7 +206,6 @@ impl Grabber {
         unsafe {
             let _: () = msg_send![
                 class!(SCShareableContent),
-                // getShareableContentWithCompletionHandler: block
                 getShareableContentExcludingDesktopWindows: true
                 onScreenWindowsOnly: true
                 completionHandler: block
