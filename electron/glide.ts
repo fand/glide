@@ -15,6 +15,8 @@ function createWindow(title: string) {
       nodeIntegration: true,
       preload: join(__dirname, "./preload.js"),
     },
+    skipTaskbar: true,
+    hiddenInMissionControl: true,
   });
   win.setSimpleFullScreen(true);
   //   win.webContents.openDevTools();
@@ -97,6 +99,9 @@ export class Glide {
       winNext?.webContents.send("load", (this.page + 1) % this.pageCount);
 
       win.moveTop();
+      win.setHiddenInMissionControl(false);
+      winNext.setHiddenInMissionControl(true);
+      winPrev.setHiddenInMissionControl(true);
 
       const transition = this.transitionDict[oldPage];
       osc.send(
@@ -125,6 +130,9 @@ export class Glide {
       );
 
       win.moveTop();
+      win.setHiddenInMissionControl(false);
+      winNext.setHiddenInMissionControl(true);
+      winPrev.setHiddenInMissionControl(true);
 
       const transition = this.transitionDict[this.page];
       osc.send(
