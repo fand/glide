@@ -62,6 +62,12 @@ const themes: Record<string, Theme> = {
   },
 };
 
+type FM = {
+  transition?: string;
+  duration?: string;
+  theme?: string;
+};
+
 // ---------------------------------------------------------------------
 
 const el = document.querySelector("#app")!;
@@ -84,7 +90,7 @@ async function loadPage(
   }
   lastContent = md;
 
-  const fm = frontmatter(md);
+  const fm = frontmatter<FM>(md);
 
   // Render Markdown
   el.innerHTML = marked(fm.body, {
@@ -97,7 +103,7 @@ async function loadPage(
   });
 
   // Update styles
-  const theme = themes[fm.attributes["theme"]] ?? defaultTheme;
+  const theme = themes[fm.attributes.theme ?? ""] ?? defaultTheme;
   document.documentElement.style.setProperty("color", theme.fg);
   document.documentElement.style.setProperty("background-color", theme.bg);
 

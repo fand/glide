@@ -27,7 +27,7 @@ chokidar.watch(publicDir).on("change", () => {
     .readdirSync(publicDir)
     .filter((f) => f.startsWith("page-"))
     .sort();
-  glide.setPages(pages);
+  glide?.setPages(pages);
 });
 
 app.on("window-all-closed", () => glide?.quit());
