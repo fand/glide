@@ -18,7 +18,7 @@ export class Glide {
 
   osc = new OSCClient("127.0.0.1", 9999);
 
-  constructor(private pageCount: number) {
+  constructor(private pages: string[]) {
     this.win = this.#createWindow("GLIDE-ELECTRON WIN 1");
     this.winNext = this.#createWindow("GLIDE-ELECTRON WIN 2");
     this.winPrev = this.#createWindow("GLIDE-ELECTRON WIN 0");
@@ -60,7 +60,7 @@ export class Glide {
 
   #onNextPage = async () => {
     const oldPage = this.page;
-    this.page = (this.page + 1) % this.pageCount;
+    this.page = (this.page + 1) % this.pages.length;
 
     [this.winPrev, this.win, this.winNext] = [
       this.win,
@@ -76,7 +76,7 @@ export class Glide {
 
   #onPrevPage = async () => {
     const oldPage = this.page;
-    this.page = (oldPage - 1 + this.pageCount) % this.pageCount;
+    this.page = (oldPage - 1 + this.pages.length) % this.pages.length;
 
     [this.winPrev, this.win, this.winNext] = [
       this.winNext,
@@ -95,7 +95,7 @@ export class Glide {
   // OSC methods ================================
 
   #sendInitOsc() {
-    this.osc.send(new Bundle(["/init", this.pageCount, this.page]));
+    this.osc.send(new Bundle(["/init", this.pages.length, this.page]));
   }
 
   #sendPageOsc(oldPage: number, newPage: number) {
@@ -146,20 +146,29 @@ export class Glide {
   }
 
   #loadPage() {
-    this.win.webContents.send("load", this.page);
+    this.win.webContents.send("load", this.page, this.pages[this.page]);
+    this.win.setHiddenInMissionControl(false);
     this.win.moveTop();
   }
 
   #loadNextPage() {
-    const index = (this.page + 1) % this.pageCount;
-    this.winNext.webContents.send("load", index);
+    const index = (this.page + 1) % this.pages.length;
+    this.winNext.webContents.send("load", index, this.pages[index]);
     this.winNext.setHiddenInMissionControl(true);
   }
 
   #loadPrevPage() {
-    const index = (this.page + this.pageCount - 1) % this.pageCount;
-    this.winPrev.webContents.send("load", index);
+    const index = (this.page + this.pages.length - 1) % this.pages.length;
+    this.winPrev.webContents.send("load", index, this.pages[index]);
     this.winPrev.setHiddenInMissionControl(true);
+  }
+
+  setPages(pages: string[]) {
+    this.pages = pages;
+
+    this.#loadNextPage();
+    this.#loadPrevPage();
+    this.#loadPage();
   }
 
   quit() {

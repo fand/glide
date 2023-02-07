@@ -65,23 +65,25 @@ const themes: Record<string, Theme> = {
 // ---------------------------------------------------------------------
 
 const el = document.querySelector("#app")!;
-let currentPage: number | undefined;
+let lastContent: string | undefined;
 
-window.electronAPI.onLoad((event: any, value: number) => {
-  loadPage(event, value);
+window.electronAPI.onLoad((event: any, index: number, page: string) => {
+  loadPage(event, index, page);
 });
 
 window.addEventListener("DOMContentLoaded", () => window.electronAPI.init());
 
-async function loadPage(event: Electron.IpcRendererEvent, index: number) {
-  if (index === currentPage) {
+async function loadPage(
+  event: Electron.IpcRendererEvent,
+  index: number,
+  page: string
+) {
+  const md = await fetch(page).then((r) => r.text());
+  if (md === lastContent) {
     return;
   }
-  currentPage = index;
+  lastContent = md;
 
-  const filename = `/page-${index.toString().padStart(2, "0")}.md`;
-
-  const md = await fetch(filename).then((r) => r.text());
   const fm = frontmatter(md);
 
   // Render Markdown
