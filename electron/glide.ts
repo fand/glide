@@ -99,7 +99,7 @@ export class Glide {
   }
 
   #sendPageOsc(oldPage: number, newPage: number) {
-    const transition = this.transitionDict[newPage];
+    const transition = this.transitionDict[oldPage];
     this.osc.send(
       new Bundle([
         "/page",
