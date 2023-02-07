@@ -130,6 +130,7 @@ export class Glide {
       },
       skipTaskbar: true,
       hiddenInMissionControl: true,
+      acceptFirstMouse: true,
     });
     win.setSimpleFullScreen(true);
     //   win.webContents.openDevTools();
@@ -149,6 +150,7 @@ export class Glide {
     this.win.webContents.send("load", this.page, this.pages[this.page]);
     this.win.setHiddenInMissionControl(false);
     this.win.moveTop();
+    this.win.focus();
   }
 
   #loadNextPage() {
