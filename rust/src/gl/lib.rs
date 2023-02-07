@@ -235,7 +235,6 @@ void main() {
         case 5: color = glitch(uv, page1, page2, t); break;
         default: color = crossfade(uv, page1, page2, t); break;
     }
-    color = glitch(uv, page1, page2, t);
 
     color.rgb /= color.a;
     color.a = color.a == 0.0 ? 0.0 : 1.0;
