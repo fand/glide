@@ -1,4 +1,5 @@
 export interface IElectronAPI {
+  init: () => void;
   onLoad: (callback: any) => Promise<string>;
 }
 

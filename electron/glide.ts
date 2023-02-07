@@ -1,41 +1,13 @@
 import { join } from "node:path";
-import { app, BrowserWindow } from "electron";
-import { globalShortcut } from "electron";
+import { app, BrowserWindow, ipcMain, globalShortcut } from "electron";
 import { Client as OSCClient, Bundle } from "node-osc";
-import { ipcMain } from "electron";
-
-function createWindow(title: string) {
-  const win = new BrowserWindow({
-    title,
-    icon: join(process.env.PUBLIC, "logo.svg"),
-    frame: false,
-    opacity: 0.9,
-    webPreferences: {
-      contextIsolation: true,
-      nodeIntegration: true,
-      preload: join(__dirname, "./preload.js"),
-    },
-    skipTaskbar: true,
-    hiddenInMissionControl: true,
-  });
-  win.setSimpleFullScreen(true);
-  //   win.webContents.openDevTools();
-
-  if (app.isPackaged) {
-    win.loadFile(join(process.env.DIST, "index.html"));
-  } else {
-    win.loadURL(process.env["VITE_DEV_SERVER_URL"]);
-  }
-
-  return win;
-}
 
 export class Glide {
   page: number = 0;
 
-  win: BrowserWindow | undefined;
-  winNext: BrowserWindow | undefined;
-  winPrev: BrowserWindow | undefined;
+  win: BrowserWindow;
+  winNext: BrowserWindow;
+  winPrev: BrowserWindow;
 
   transitionDict: {
     [index: number]: {
@@ -44,122 +16,155 @@ export class Glide {
     };
   } = {};
 
+  osc = new OSCClient("127.0.0.1", 9999);
+
   constructor(private pageCount: number) {
-    ipcMain.on("set-transition", this.onSetTransition);
+    this.win = this.#createWindow("GLIDE-ELECTRON WIN 1");
+    this.winNext = this.#createWindow("GLIDE-ELECTRON WIN 2");
+    this.winPrev = this.#createWindow("GLIDE-ELECTRON WIN 0");
+
+    globalShortcut.register("Alt+Shift+Space", this.#onInit);
+    globalShortcut.register("Alt+Shift+Right", this.#onNextPage);
+    globalShortcut.register("Alt+Shift+Left", this.#onPrevPage);
+    globalShortcut.register("Alt+Shift+Q", this.#onClose);
+
+    ipcMain.on("init", this.#onInitWindow);
+    ipcMain.on("set-transition", this.#onSetTransition);
   }
 
-  onSetTransition = (
+  // IPC handlers ================================
+
+  #onSetTransition = (
     _e: any,
     index: number,
     transition: string,
     duration: number
   ) => {
-    console.log(">> set-transition", transition, duration);
     this.transitionDict[index] = { transition, duration };
   };
 
-  async init() {
-    const win = createWindow("GLIDE-ELECTRON WIN 1");
-    const winNext = createWindow("GLIDE-ELECTRON WIN 2");
-    const winPrev = createWindow("GLIDE-ELECTRON WIN 0");
+  #onInitWindow = (e: Electron.IpcMainEvent) => {
+    const win = BrowserWindow.fromWebContents(e.sender);
+    if (win === this.win) {
+      this.#loadPage();
+    } else if (win === this.winNext) {
+      this.#loadNextPage();
+    } else if (win === this.winPrev) {
+      this.#loadPrevPage();
+    }
+  };
 
-    win.on("close", () => (this.win = undefined));
-    winNext.on("close", () => (this.winNext = undefined));
-    winPrev.on("close", () => (this.winPrev = undefined));
+  // Keyboard shortcut handlers ================================
 
-    await new Promise((o) => win.webContents.on("did-finish-load", o));
-    await new Promise((o) => winNext.webContents.on("did-finish-load", o));
-    await new Promise((o) => winPrev.webContents.on("did-finish-load", o));
+  #onInit = () => this.#sendInitOsc();
 
-    await new Promise((o) => setTimeout(o, 1000));
+  #onNextPage = async () => {
+    const oldPage = this.page;
+    this.page = (this.page + 1) % this.pageCount;
 
-    win.webContents.send("load", 0);
-    winNext.webContents.send("load", 1);
-    winPrev.webContents.send("load", this.pageCount - 1);
+    [this.winPrev, this.win, this.winNext] = [
+      this.win,
+      this.winNext,
+      this.winPrev,
+    ];
+    this.#loadPage();
+    this.#loadNextPage();
+    this.#loadPrevPage();
 
-    win.moveTop();
+    this.#sendPageOsc(oldPage, this.page);
+  };
 
-    const osc = new OSCClient("127.0.0.1", 9999);
+  #onPrevPage = async () => {
+    const oldPage = this.page;
+    this.page = (oldPage - 1 + this.pageCount) % this.pageCount;
 
-    globalShortcut.register("Alt+Shift+Space", () => {
-      osc.send(new Bundle(["/init", this.pageCount, this.page]));
-    });
+    [this.winPrev, this.win, this.winNext] = [
+      this.winNext,
+      this.winPrev,
+      this.win,
+    ];
+    this.#loadPage();
+    this.#loadNextPage();
+    this.#loadPrevPage();
 
-    globalShortcut.register("Alt+Shift+Q", () => {
-      osc.send(new Bundle(["/kill"]));
-    });
+    this.#sendPageOsc(oldPage, this.page);
+  };
 
-    globalShortcut.register("Alt+Shift+Right", async () => {
-      const oldPage = this.page;
-      this.page = (this.page + 1) % this.pageCount;
+  #onClose = () => this.#sendKillOsc();
 
-      let [winPrev, win, winNext] = [this.winPrev, this.win, this.winNext];
+  // OSC methods ================================
 
-      [winPrev, win, winNext] = [win, winNext, winPrev];
-      winNext?.webContents.send("load", (this.page + 1) % this.pageCount);
-
-      win.moveTop();
-      win.setHiddenInMissionControl(false);
-      winNext.setHiddenInMissionControl(true);
-      winPrev.setHiddenInMissionControl(true);
-
-      const transition = this.transitionDict[oldPage];
-      osc.send(
-        new Bundle([
-          "/page",
-          oldPage,
-          this.page,
-          transition.transition,
-          transition.duration,
-        ])
-      );
-
-      [this.winPrev, this.win, this.winNext] = [winPrev, win, winNext];
-    });
-
-    globalShortcut.register("Alt+Shift+Left", () => {
-      const oldPage = this.page;
-      this.page = (oldPage - 1 + this.pageCount) % this.pageCount;
-
-      let [winPrev, win, winNext] = [this.winPrev, this.win, this.winNext];
-
-      [winPrev, win, winNext] = [winNext, winPrev, win];
-      winPrev?.webContents.send(
-        "load",
-        (this.page - 1 + this.pageCount) % this.pageCount
-      );
-
-      win.moveTop();
-      win.setHiddenInMissionControl(false);
-      winNext.setHiddenInMissionControl(true);
-      winPrev.setHiddenInMissionControl(true);
-
-      const transition = this.transitionDict[this.page];
-      osc.send(
-        new Bundle([
-          "/page",
-          oldPage,
-          this.page,
-          transition.transition,
-          transition.duration,
-        ])
-      );
-
-      [this.winPrev, this.win, this.winNext] = [winPrev, win, winNext];
-    });
-
-    this.win = win;
-    this.winNext = winNext;
-    this.winPrev = winPrev;
+  #sendInitOsc() {
+    this.osc.send(new Bundle(["/init", this.pageCount, this.page]));
   }
 
-  closeAll() {
-    this.win = undefined;
-    this.winNext = undefined;
-    this.winPrev = undefined;
+  #sendPageOsc(oldPage: number, newPage: number) {
+    const transition = this.transitionDict[newPage];
+    this.osc.send(
+      new Bundle([
+        "/page",
+        oldPage,
+        newPage,
+        transition.transition,
+        transition.duration,
+      ])
+    );
+  }
+
+  #sendKillOsc() {
+    this.osc.send(new Bundle(["/kill"]));
+  }
+
+  // Internal logic ================================
+
+  #createWindow(title: string) {
+    const win = new BrowserWindow({
+      title,
+      icon: join(process.env.PUBLIC, "logo.svg"),
+      frame: false,
+      opacity: 0.9,
+      webPreferences: {
+        contextIsolation: true,
+        nodeIntegration: true,
+        preload: join(__dirname, "./preload.js"),
+      },
+      skipTaskbar: true,
+      hiddenInMissionControl: true,
+    });
+    win.setSimpleFullScreen(true);
+    //   win.webContents.openDevTools();
+
+    if (app.isPackaged) {
+      win.loadFile(join(process.env.DIST, "index.html"));
+    } else {
+      win.loadURL(process.env["VITE_DEV_SERVER_URL"]);
+    }
+
+    win.on("close", () => this.quit());
+
+    return win;
+  }
+
+  #loadPage() {
+    this.win.webContents.send("load", this.page);
+    this.win.moveTop();
+  }
+
+  #loadNextPage() {
+    const index = (this.page + 1) % this.pageCount;
+    this.winNext.webContents.send("load", index);
+    this.winNext.setHiddenInMissionControl(true);
+  }
+
+  #loadPrevPage() {
+    const index = (this.page + this.pageCount - 1) % this.pageCount;
+    this.winPrev.webContents.send("load", index);
+    this.winPrev.setHiddenInMissionControl(true);
   }
 
   quit() {
+    this.#sendKillOsc();
     globalShortcut.unregisterAll();
+    app.quit();
   }
 }

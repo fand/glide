@@ -1,6 +1,6 @@
 import { join } from "node:path";
 import fs from "node:fs";
-import { app, BrowserWindow } from "electron";
+import { app } from "electron";
 import { Glide } from "./glide";
 
 // CONSTANTS
@@ -17,13 +17,7 @@ let glide: Glide | undefined;
 
 app.whenReady().then(() => {
   glide = new Glide(PAGE_COUNT);
-  glide.init();
 });
 
-app.on("window-all-closed", () => {
-  glide?.closeAll();
-});
-
-app.on("quit", () => {
-  glide.quit();
-});
+app.on("window-all-closed", () => glide.quit());
+app.on("quit", () => glide.quit());
