@@ -51,12 +51,13 @@ layout(binding = 2) uniform usampler2D tex2;
 
 layout(set = 0, binding = 0) uniform Locals {
     float time;
-    float from_page;
-    float to_page;
+    float page1_f;
+    float page2_f;
     float page_count;
 
     float transition_index;
     float transition_duration;
+    float direction;
 };
 
 vec4 readTex(vec2 uv, int i) {
@@ -220,10 +221,16 @@ void main() {
     // color = debug(uv);
     // color = debug2(uv);
 
-    int page1 = int(from_page + 1.) % 3;
-    int page2 = int(to_page + 1.) % 3;
+    int page1 = int(page1_f + 1.) % 3;
+    int page2 = int(page2_f + 1.) % 3;
 
-    float t = clamp(time / transition_duration, 0., 1.);
+    float t;
+    if (direction > 0.) {
+        t = clamp(time / transition_duration, 0., 1.);
+    } else {
+        t = clamp(1. - time / transition_duration, 0., 1.);
+    }
+
     t = smoothstep(0., 1., t);
 
     switch (int(transition_index)) {
@@ -289,11 +296,12 @@ struct State {
     texture2: Texture,
 
     start_time: SystemTime,
-    prev_page: u32,
-    page: u32,
+    page1: u32,
+    page2: u32,
     page_count: u32,
     transition_index: f32,
     transition_duration: f32,
+    direction: f32,
 
     receiver: Receiver,
 }
@@ -392,11 +400,12 @@ impl GLApp {
 
             start_time: SystemTime::now(),
 
-            prev_page: 0,
-            page: 0,
+            page1: 0,
+            page2: 0,
             page_count: 1,
             transition_index: 0.0,
             transition_duration: 0.0,
+            direction: 1.0,
 
             receiver,
         }
@@ -423,9 +432,8 @@ impl GLApp {
         if let Some(args) = msg.args {
             println!(">> osc_init: {:?}", args);
             state.page_count = args[0].clone().float().unwrap() as u32;
-            state.prev_page = args[1].clone().float().unwrap() as u32;
-            state.page = args[1].clone().float().unwrap() as u32;
-            println!(">> prev_page: {}, page: {}", state.prev_page, state.page);
+            state.page1 = args[1].clone().float().unwrap() as u32;
+            state.page2 = args[1].clone().float().unwrap() as u32;
         }
     }
 
@@ -433,10 +441,11 @@ impl GLApp {
         if let Some(args) = msg.args {
             println!(">> osc_page: {:?}", args);
             state.start_time = SystemTime::now();
-            state.prev_page = args[0].clone().float().unwrap() as u32;
-            state.page = args[1].clone().float().unwrap() as u32;
+            state.page1 = args[0].clone().float().unwrap() as u32;
+            state.page2 = args[1].clone().float().unwrap() as u32;
             state.transition_index = transition_to_index(&args[2].clone().string().unwrap());
             state.transition_duration = args[3].clone().float().unwrap_or(0.3);
+            state.direction = args[4].clone().float().unwrap_or(1.0);
         }
     }
 
@@ -448,11 +457,12 @@ impl GLApp {
                 &state.ubo,
                 &vec![
                     time,
-                    state.prev_page as f32,
-                    state.page as f32,
+                    state.page1 as f32,
+                    state.page2 as f32,
                     state.page_count as f32,
                     state.transition_index,
                     state.transition_duration,
+                    state.direction,
                 ],
             );
         }

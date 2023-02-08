@@ -71,7 +71,7 @@ export class Glide {
     this.#loadNextPage();
     this.#loadPrevPage();
 
-    this.#sendPageOsc(oldPage, this.page);
+    this.#sendPageOsc(oldPage, this.page, 1);
   };
 
   #onPrevPage = async () => {
@@ -87,7 +87,7 @@ export class Glide {
     this.#loadNextPage();
     this.#loadPrevPage();
 
-    this.#sendPageOsc(oldPage, this.page);
+    this.#sendPageOsc(this.page, oldPage, -1);
   };
 
   #onClose = () => this.#sendKillOsc();
@@ -98,15 +98,16 @@ export class Glide {
     this.osc.send(new Bundle(["/init", this.pages.length, this.page]));
   }
 
-  #sendPageOsc(oldPage: number, newPage: number) {
-    const transition = this.transitionDict[oldPage];
+  #sendPageOsc(page1: number, page2: number, direction: number) {
+    const transition = this.transitionDict[page1];
     this.osc.send(
       new Bundle([
         "/page",
-        oldPage,
-        newPage,
+        page1,
+        page2,
         transition.transition,
         transition.duration,
+        direction,
       ])
     );
   }
