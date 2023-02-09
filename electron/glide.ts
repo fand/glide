@@ -121,9 +121,10 @@ export class Glide {
   #createWindow(title: string) {
     const win = new BrowserWindow({
       title,
-      icon: join(process.env.PUBLIC, "logo.svg"),
+      //   icon: join(process.env.DIST, "build/glide_app_icon.svg"),
+      icon: join(__dirname, "../../build/glide_app_icon.png"),
       frame: false,
-      opacity: 0.9,
+      opacity: 0.99,
       webPreferences: {
         contextIsolation: true,
         nodeIntegration: true,
