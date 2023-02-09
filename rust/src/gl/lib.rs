@@ -319,9 +319,9 @@ impl GLApp {
             .maximized(true)
             .always_on_top(true)
             .mouse_passthrough(true)
-            .title("GL!")
             .decorations(false)
-            .transparent(true);
+            .transparent(true)
+            .title("GL!");
 
         notan::init_with(|gfx: &mut Graphics| GLApp::setup(gfx))
             .add_config(win)

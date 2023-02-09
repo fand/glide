@@ -132,9 +132,9 @@ export class Glide {
       skipTaskbar: true,
       hiddenInMissionControl: true,
       acceptFirstMouse: true,
+      roundedCorners: false,
     });
-    win.setSimpleFullScreen(true);
-    //   win.webContents.openDevTools();
+    win.maximize();
 
     if (app.isPackaged) {
       win.loadFile(join(process.env.DIST, "index.html"));
