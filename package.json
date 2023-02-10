@@ -1,12 +1,15 @@
 {
-  "name": "glide-electron",
+  "name": "glide",
   "version": "0.0.0",
-  "description": "glide-electron",
+  "description": "glide",
   "main": "dist/electron/main.js",
-  "repository": "https://github.com/fand/glide-electron",
+  "repository": "https://github.com/fand/glide",
   "author": "AMAGI <mail@amagi.dev>",
   "license": "MIT",
   "private": true,
+  "os": [
+    "darwin"
+  ],
   "scripts": {
     "dev": "run-p dev:*",
     "dev:js": "vite",
@@ -33,6 +36,9 @@
   },
   "keywords": [
     "electron",
-    "markdown"
+    "markdown",
+    "presentation",
+    "transition",
+    "opengl"
   ]
 }
