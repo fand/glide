@@ -1,20 +1,22 @@
+<img align="center" src="/build/glide_banner_for_readme.png"/>
+
+
 # GLIDE
 
+Graphical Slideshow with GPU power.
 
-## Setup
+*NOTE: Glide only supports macOS 13+.*
 
-```
-git clone https://github.com/fand/glide
-cd glide
-npm i
-npm run dev:js
-```
-
-Then opne another terminal and run:
+## Install
 
 ```
-cd rust
-cargo run
+$ npm i -g @fand/glide
+```
+
+## Usage
+
+```
+$ glide MARKDONW_DIR
 ```
 
 ## LICENSE
