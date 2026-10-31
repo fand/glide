@@ -1,0 +1,43 @@
+import type { Transition } from "../frontmatter.ts";
+import type { TransitionDef, TransitionUniforms } from "./types.ts";
+import { crossfade } from "./crossfade.ts";
+import { swipe } from "./swipe.ts";
+
+export type { TransitionDef, TransitionUniforms } from "./types.ts";
+
+const REGISTRY = new Map<string, TransitionDef>();
+const ALIASES = new Map<string, string>([
+  ["fade", "crossfade"],
+  ["slide", "swipe"],
+]);
+
+export function registerTransition(def: TransitionDef, aliases: string[] = []): void {
+  REGISTRY.set(def.name, def);
+  for (const a of aliases) {
+    ALIASES.set(a, def.name);
+  }
+}
+
+registerTransition(crossfade);
+registerTransition(swipe);
+
+export type ResolvedTransition = { def: TransitionDef; uniforms: TransitionUniforms };
+
+const warned = new Set<string>();
+
+/** Look up a transition. Returns null for `none`. Unknown names fall back to crossfade. */
+export function resolveTransition(t: Transition): ResolvedTransition | null {
+  const name = t.name.toLowerCase();
+  if (name === "none") {
+    return null;
+  }
+  let def = REGISTRY.get(ALIASES.get(name) ?? name);
+  if (!def) {
+    if (!warned.has(name)) {
+      warned.add(name);
+      console.warn(`glide: unknown transition "${t.name}", using crossfade`);
+    }
+    def = crossfade;
+  }
+  return { def, uniforms: def.parseArgs?.(t.args) ?? {} };
+}

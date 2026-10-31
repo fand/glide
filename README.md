@@ -5,7 +5,7 @@
 
 Markdown slideshow with GPU transitions.
 
-*NOTE: v2 is a rewrite as a plain web app. GPU transitions come in the next phase.*
+*NOTE: v2 is a rewrite as a plain web app.*
 
 ## Install
 
@@ -27,11 +27,13 @@ Options:
 - `-p, --port <n>`: dev server port (default `3000`)
 - `--host`: listen on all interfaces
 - `--no-open`: do not open the browser
+- `--no-gpu`: turn off WebGL transitions
 - `-t, --theme <name>`: theme (beats the frontmatter)
 - `-o, --out <dir>`: build output dir (default `./out`)
 - `--export <dir>`: same as `glide build -o <dir>`
 
-The build output is self-contained (`index.html`, `glide.js`, `assets/`) and works from `file://`.
+The build output is self-contained (`index.html`, `glide.js`, `assets/`).
+It opens from `file://`, but without transitions (browsers treat each local file as cross-origin, so the canvas capture drops images). Serve the folder over http to get transitions.
 
 ### As a library
 
@@ -39,7 +41,7 @@ The build output is self-contained (`index.html`, `glide.js`, `assets/`) and wor
 import { run } from "@fand/glide";
 
 const md = await fetch("./slide.md").then((r) => r.text());
-const deck = run(md, { theme: "mocha", baseUrl: "./" });
+const deck = run(md, { theme: "mocha", baseUrl: "./", transitions: true });
 deck.next();
 ```
 
@@ -102,8 +104,21 @@ header:
 
 ## Transitions
 
-Transitions are parsed but not rendered yet; they come in the next phase.
-They will use HTML-in-Canvas, which needs Chrome with `chrome://flags/#canvas-draw-element` enabled. Other browsers get a fallback.
+Transitions run in WebGL on [VFX-JS](https://github.com/fand/vfx-js) with HTML-in-Canvas.
+HTML-in-Canvas needs Chrome with `chrome://flags/#canvas-draw-element` enabled.
+Other browsers use a slower fallback (dom-to-canvas), where animated GIFs and videos do not move.
+
+Set them per deck (frontmatter) or per slide (directive). A slide's transition plays when you move to it; moving back plays it in reverse.
+
+| Name | Aliases | Args |
+| --- | --- | --- |
+| `crossfade` (default) | `fade` | |
+| `swipe` | `slide` | `left` (default), `right`, `up`, `down`: the way the content moves. `swipe left` moves the old slide out to the left and brings the new one in from the right. |
+| `none` | | no animation |
+
+Unknown names fall back to `crossfade`. `duration` is in seconds (default `0.5`).
+
+Mark a slide with `<!-- live -->` when it has moving content (GIF, video, CSS animation); glide then re-captures it every frame.
 
 ## Development
 

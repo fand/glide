@@ -4,6 +4,8 @@ export type TemplateOpts = {
   theme?: string;
   baseUrl?: string;
   liveReload?: boolean;
+  /** false turns off WebGL transitions. */
+  transitions?: boolean;
 };
 
 function escapeHtml(s: string): string {
@@ -36,12 +38,15 @@ const RELOAD_JS = `new EventSource("/__events").onmessage = () => location.reloa
  * Chrome blocks module scripts on file://, and the export must open from disk.
  */
 export function renderHtml(opts: TemplateOpts): string {
-  const runOpts: Record<string, string> = {};
+  const runOpts: Record<string, string | boolean> = {};
   if (opts.theme) {
     runOpts.theme = opts.theme;
   }
   if (opts.baseUrl) {
     runOpts.baseUrl = opts.baseUrl;
+  }
+  if (opts.transitions === false) {
+    runOpts.transitions = false;
   }
   const runOptsJs = JSON.stringify(runOpts).replace(/</g, "\\u003c");
 

@@ -2,6 +2,7 @@ import { parse, type ParsedDeck, type Slide } from "./parse.ts";
 import slideCss from "./slide.css?inline";
 import themesCss from "./themes.css?inline";
 import hljsCss from "highlight.js/styles/github-dark.css?inline";
+import { attachTransitions, type Transitions } from "./stage.ts";
 
 export const DEFAULT_THEME = "mocha";
 
@@ -14,6 +15,8 @@ export type RunOpts = {
   baseUrl?: string;
   /** Sync the slide number with `location.hash`. Default: true. */
   hash?: boolean;
+  /** Run WebGL transitions. Default: true. */
+  transitions?: boolean;
 };
 
 export type Direction = 1 | -1;
@@ -309,7 +312,10 @@ export function run(md: string, opts: RunOpts = {}): Deck {
 
   goto((useHash ? readHash() : null) ?? 0);
 
-  return {
+  let transitions: Transitions | null = null;
+  let destroyed = false;
+
+  const deck: Deck = {
     meta,
     slides,
     el: glide,
@@ -327,10 +333,32 @@ export function run(md: string, opts: RunOpts = {}): Deck {
       swap = fn;
     },
     destroy() {
+      destroyed = true;
+      transitions?.destroy();
       window.removeEventListener("keydown", onKey);
       window.removeEventListener("hashchange", onHashChange);
       glide.remove();
       cssLink?.remove();
     },
   };
+
+  // On file:// every image is cross-origin, so HTML-in-Canvas captures drop them.
+  const fileUrl = location.protocol === "file:";
+  if (fileUrl && opts.transitions !== false) {
+    console.info("glide: transitions are off on file://. Serve the folder over http to use them.");
+  }
+  if ((opts.transitions ?? true) && !fileUrl) {
+    attachTransitions(deck).then(
+      (t) => {
+        if (destroyed) {
+          t.destroy();
+        } else {
+          transitions = t;
+        }
+      },
+      (e) => console.error("glide: transitions disabled:", e),
+    );
+  }
+
+  return deck;
 }

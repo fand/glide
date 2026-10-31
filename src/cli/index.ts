@@ -14,6 +14,7 @@ Options:
   -p, --port <n>       Dev server port (default: 3000)
       --host           Listen on all interfaces
       --no-open        Do not open the browser
+      --no-gpu         Turn off WebGL transitions
   -t, --theme <name>   Theme (overrides the frontmatter)
   -o, --out <dir>      Output dir for build (default: ./out)
       --export <dir>   Same as \`glide build -o <dir>\`
@@ -36,6 +37,7 @@ async function main(): Promise<void> {
         port: { type: "string", short: "p" },
         host: { type: "boolean" },
         "no-open": { type: "boolean" },
+        "no-gpu": { type: "boolean" },
         theme: { type: "string", short: "t" },
         out: { type: "string", short: "o" },
         export: { type: "string" },
@@ -68,7 +70,12 @@ async function main(): Promise<void> {
   }
 
   if (isBuild || values.export !== undefined) {
-    await build({ file, outDir: values.out ?? values.export ?? "out", theme: values.theme });
+    await build({
+      file,
+      outDir: values.out ?? values.export ?? "out",
+      theme: values.theme,
+      transitions: !values["no-gpu"],
+    });
     return;
   }
 
@@ -82,6 +89,7 @@ async function main(): Promise<void> {
     host: values.host ?? false,
     open: !values["no-open"],
     theme: values.theme,
+    transitions: !values["no-gpu"],
   });
 }
 

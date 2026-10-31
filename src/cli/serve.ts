@@ -13,6 +13,7 @@ export type ServeOpts = {
   host: boolean;
   open: boolean;
   theme?: string;
+  transitions?: boolean;
 };
 
 const MIME: Record<string, string> = {
@@ -96,7 +97,13 @@ export async function serve(opts: ServeOpts): Promise<void> {
       if (p === "/" || p === "/index.html") {
         const md = await fs.promises.readFile(mdPath, "utf8");
         const title = parseFrontmatter(md).meta.title ?? path.basename(mdPath, ".md");
-        send(res, 200, renderHtml({ md, title, theme: opts.theme, liveReload: true }), MIME[".html"]);
+        send(res, 200, renderHtml({
+            md,
+            title,
+            theme: opts.theme,
+            transitions: opts.transitions,
+            liveReload: true,
+          }), MIME[".html"]);
         return;
       }
       if (p === "/glide.js") {

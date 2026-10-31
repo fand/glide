@@ -8,6 +8,7 @@ export type BuildOpts = {
   file: string;
   outDir: string;
   theme?: string;
+  transitions?: boolean;
 };
 
 function isLocal(url: string): boolean {
@@ -161,7 +162,7 @@ export async function build(opts: BuildOpts): Promise<void> {
   const title = meta.title ?? path.basename(mdPath, ".md");
   await fs.promises.writeFile(
     path.join(outDir, "index.html"),
-    renderHtml({ md, title, theme: opts.theme }),
+    renderHtml({ md, title, theme: opts.theme, transitions: opts.transitions }),
   );
   await fs.promises.copyFile(runtimePath(), path.join(outDir, "glide.js"));
 
