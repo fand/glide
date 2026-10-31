@@ -48,3 +48,23 @@ void main() {
 export function buildFrag(body: string): string {
   return `${PRELUDE}\n${body}\n${MAIN}`;
 }
+
+/** Line in the full shader where the transition body starts, minus one. */
+const BODY_OFFSET = PRELUDE.split("\n").length;
+
+/**
+ * Turn a WebGL compile error into lines that point into the user's file,
+ * e.g. "line 3: '}' : syntax error". Returns null if `err` is not one.
+ */
+export function describeGlslError(err: unknown): string[] | null {
+  const msg = err instanceof Error ? err.message : String(err);
+  if (!/compile failed|link failed/i.test(msg)) {
+    return null;
+  }
+  const lines: string[] = [];
+  for (const m of msg.matchAll(/ERROR:\s*\d+:(\d+):\s*(.*)/g)) {
+    const line = Number(m[1]) - BODY_OFFSET;
+    lines.push(line >= 1 ? `line ${line}: ${m[2]}` : m[2]);
+  }
+  return lines.length > 0 ? lines : [msg.split("\n")[0]];
+}

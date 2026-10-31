@@ -8,8 +8,10 @@ import { glitchSlide } from "./glitch-slide.ts";
 import { glitch } from "./glitch.ts";
 import { datamosh } from "./datamosh.ts";
 import { pixelsort } from "./pixelsort.ts";
+import type { TransitionMap } from "./custom.ts";
 
 export type { TransitionDef, TransitionRun, TransitionUniforms } from "./types.ts";
+export { customTransition, customTransitions, type TransitionMap } from "./custom.ts";
 
 const REGISTRY = new Map<string, TransitionDef>();
 const ALIASES = new Map<string, string>([
@@ -42,13 +44,16 @@ export type ResolvedTransition = { def: TransitionDef; uniforms: TransitionUnifo
 
 const warned = new Set<string>();
 
-/** Look up a transition. Returns null for `none`. Unknown names fall back to crossfade. */
-export function resolveTransition(t: Transition): ResolvedTransition | null {
+/**
+ * Look up a transition: the deck's own (`local`) first, then the built-ins.
+ * Returns null for `none`. Unknown names fall back to crossfade.
+ */
+export function resolveTransition(t: Transition, local?: TransitionMap): ResolvedTransition | null {
   const name = t.name.toLowerCase();
   if (name === "none") {
     return null;
   }
-  let def = REGISTRY.get(ALIASES.get(name) ?? name);
+  let def = local?.get(name) ?? REGISTRY.get(ALIASES.get(name) ?? name);
   if (!def) {
     if (!warned.has(name)) {
       warned.add(name);

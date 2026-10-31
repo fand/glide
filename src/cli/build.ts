@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { renderHtml } from "./template.ts";
+import { loadShaders } from "./shaders.ts";
 import { parseFrontmatter } from "../runtime/frontmatter.ts";
 import { runtimePath } from "./paths.ts";
 
@@ -162,7 +163,13 @@ export async function build(opts: BuildOpts): Promise<void> {
   const title = meta.title ?? path.basename(mdPath, ".md");
   await fs.promises.writeFile(
     path.join(outDir, "index.html"),
-    renderHtml({ md, title, theme: opts.theme, transitions: opts.transitions }),
+    renderHtml({
+      md,
+      title,
+      theme: opts.theme,
+      transitions: opts.transitions,
+      shaders: await loadShaders(mdPath, md),
+    }),
   );
   await fs.promises.copyFile(runtimePath(), path.join(outDir, "glide.js"));
 

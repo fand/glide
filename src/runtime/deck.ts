@@ -3,6 +3,7 @@ import slideCss from "./slide.css?inline";
 import themesCss from "./themes.css?inline";
 import hljsCss from "highlight.js/styles/github-dark.css?inline";
 import { attachTransitions, type Transitions } from "./stage.ts";
+import { customTransitions } from "./transitions/custom.ts";
 
 export const DEFAULT_THEME = "mocha";
 
@@ -17,6 +18,11 @@ export type RunOpts = {
   hash?: boolean;
   /** Run WebGL transitions. Default: true. */
   transitions?: boolean;
+  /**
+   * Custom transitions for this deck: name -> GLSL body defining
+   * `vec4 transition(vec2 uv, float t)`. They shadow built-ins of the same name.
+   */
+  shaders?: Record<string, string>;
 };
 
 export type Direction = 1 | -1;
@@ -419,7 +425,7 @@ export function run(md: string, opts: RunOpts = {}): Deck {
     console.info("glide: transitions are off on file://. Serve the folder over http to use them.");
   }
   if ((opts.transitions ?? true) && !fileUrl) {
-    attachTransitions(deck).then(
+    attachTransitions(deck, customTransitions(opts.shaders)).then(
       (t) => {
         if (destroyed) {
           t.destroy();

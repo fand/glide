@@ -43,7 +43,7 @@ test("inline header list", () => {
 
 test("no frontmatter", () => {
   const { meta, body } = parseFrontmatter("# Hi\n");
-  assert.deepEqual(meta, { header: [], data: {} });
+  assert.deepEqual(meta, { header: [], transitions: {}, data: {} });
   assert.equal(body, "# Hi\n");
 });
 

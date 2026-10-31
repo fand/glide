@@ -84,7 +84,7 @@ header:
 ```
 
 - Slides split on `---` lines (ignored inside code fences).
-- Frontmatter keys: `title`, `theme`, `transition`, `duration` (seconds), `layout`, `css` (extra stylesheet, relative to the md), `header` (items shown at the top right).
+- Frontmatter keys: `title`, `theme`, `transition`, `duration` (seconds), `layout`, `css` (extra stylesheet, relative to the md), `header` (items shown at the top right), `transitions` (custom shaders, see [Custom transitions](#custom-transitions)).
 - Per-slide directives at the top of a slide: `<!-- transition: NAME ARGS -->`, `<!-- duration: N -->`, `<!-- layout: ... -->`, `<!-- theme: ... -->`, `<!-- live -->`. They override the frontmatter.
 - `|||` splits a `two-column` slide into left and right.
 - Raw HTML works, e.g. `<img src="cat.gif" class="center w-60">`. Utility classes: `center`, `w-20` `w-30` `w-40` `w-60` `w-70` `w-80` `w-100`.
@@ -129,6 +129,49 @@ Set them per deck (frontmatter) or per slide (directive). A slide's transition p
 Unknown names fall back to `crossfade`. `duration` is in seconds (default `0.5`).
 
 Mark a slide with `<!-- live -->` when it has moving content (GIF, video, CSS animation); glide then re-captures it every frame.
+
+### Custom transitions
+
+Ship your own shaders next to the markdown and name them in the frontmatter:
+
+```yaml
+---
+transitions:
+  wipe: ./wipe.frag
+  burn: ./shaders/burn.glsl
+---
+```
+
+Then use them like built-ins: `<!-- transition: wipe -->`. A custom name hides a built-in of the same name. Custom transitions take no args (glide warns if you pass some).
+
+A shader file is a GLSL ES 3.0 body that defines `vec4 transition(vec2 uv, float t)`:
+
+- `uv` is 0..1 over the slide, origin at the bottom left.
+- `t` goes 0 → 1, already eased. Moving back plays it in reverse for you (old and new swap roles), so write only the forward animation.
+- Read the slides with `readFrom(uv)` (old) and `readTo(uv)` (new). Reads outside 0..1 return transparent black; `inRange(uv)` tells you if a point is inside.
+- Uniforms you can use: `t`, `reverse`, `resolution` (px), `time` (s). Do not declare your own uniforms; nothing sets them.
+- Do not write `#version` or `precision`; glide adds them and refuses a shader that has `#version`.
+- Return the output color. It should be opaque where the slide is.
+
+`examples/wipe.frag`:
+
+```glsl
+// Diagonal wipe with a soft edge, from the bottom-left corner.
+const float EDGE = 0.1;
+
+vec4 transition(vec2 uv, float t) {
+  // 0 at the bottom-left corner, 1 at the top-right.
+  float d = (uv.x + uv.y) * 0.5;
+  // Move the edge from just before 0 to just past 1, so both ends are clean.
+  float p = t * (1.0 + 2.0 * EDGE) - EDGE;
+  float m = smoothstep(p - EDGE, p + EDGE, d);
+  return mix(readTo(uv), readFrom(uv), m);
+}
+```
+
+The CLI reads the files (they must be inside the markdown's folder) and puts them in the page, so `glide build` output needs no extra files. Edits reload in `glide slide.md`. With the library, pass the sources yourself: `run(md, { shaders: { wipe: src } })`, or call `registerTransition()` to add one for every deck.
+
+If a shader fails to compile, glide logs the error to the console and cuts straight to the next slide.
 
 ## Development
 

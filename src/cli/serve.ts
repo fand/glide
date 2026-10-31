@@ -4,6 +4,7 @@ import path from "node:path";
 import { spawn } from "node:child_process";
 import { watch } from "chokidar";
 import { renderHtml } from "./template.ts";
+import { loadShaders } from "./shaders.ts";
 import { parseFrontmatter } from "../runtime/frontmatter.ts";
 import { runtimePath } from "./paths.ts";
 
@@ -97,11 +98,13 @@ export async function serve(opts: ServeOpts): Promise<void> {
       if (p === "/" || p === "/index.html") {
         const md = await fs.promises.readFile(mdPath, "utf8");
         const title = parseFrontmatter(md).meta.title ?? path.basename(mdPath, ".md");
+        const shaders = await loadShaders(mdPath, md);
         send(res, 200, renderHtml({
             md,
             title,
             theme: opts.theme,
             transitions: opts.transitions,
+            shaders,
             liveReload: true,
           }), MIME[".html"]);
         return;

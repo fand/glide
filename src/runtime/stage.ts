@@ -2,7 +2,11 @@ import { VFX, supportsHtmlInCanvas, type Effect } from "@vfx-js/core";
 import type { Deck } from "./deck.ts";
 import { TransitionEffect } from "./transitions/base.ts";
 import { buildFrag } from "./transitions/glsl.ts";
-import { resolveTransition, type TransitionDef } from "./transitions/index.ts";
+import {
+  resolveTransition,
+  type TransitionDef,
+  type TransitionMap,
+} from "./transitions/index.ts";
 
 export type Transitions = { destroy(): void };
 
@@ -28,7 +32,10 @@ function nextPaint(canvas: HTMLCanvasElement | null, ms = 300): Promise<void> {
  * Wrap `deck.stage` with HTML-in-Canvas and run slide transitions on it.
  * Without HTML-in-Canvas, vfx-js falls back to dom-to-canvas capture.
  */
-export async function attachTransitions(deck: Deck): Promise<Transitions> {
+export async function attachTransitions(
+  deck: Deck,
+  local: TransitionMap = new Map(),
+): Promise<Transitions> {
   const hic = supportsHtmlInCanvas();
   if (!hic) {
     console.info(
@@ -145,7 +152,7 @@ export async function attachTransitions(deck: Deck): Promise<Transitions> {
     const leaving = deck.slides[ctx.from];
     const entering = deck.slides[ctx.to];
     const owner = ctx.direction === 1 ? entering : leaving;
-    const resolved = resolveTransition(owner.transition);
+    const resolved = resolveTransition(owner.transition, local);
 
     if (!resolved || owner.duration <= 0) {
       endActive();
@@ -183,6 +190,7 @@ export async function attachTransitions(deck: Deck): Promise<Transitions> {
       return;
     }
     await effect.start({
+      name: def.name,
       frag: fragOf(def),
       uniforms,
       duration: owner.duration,

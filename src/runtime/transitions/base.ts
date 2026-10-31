@@ -1,7 +1,10 @@
 import type { Effect, EffectContext, EffectRenderTarget } from "@vfx-js/core";
 import type { TransitionUniforms } from "./types.ts";
+import { describeGlslError } from "./glsl.ts";
 
 export type TransitionSpec = {
+  /** For error messages. */
+  name?: string;
   frag: string;
   uniforms?: TransitionUniforms;
   /** Seconds. */
@@ -33,6 +36,8 @@ export class TransitionEffect implements Effect {
   #onEnd: (() => void) | null = null;
 
   #endHook: (() => void) | null = null;
+  /** Shaders that failed to compile; later runs with them cut straight to the new slide. */
+  #broken = new Set<string>();
 
   /** End the current run: call its `onEnd` and settle the promise from `start()`. */
   #end(): void {
@@ -107,7 +112,7 @@ export class TransitionEffect implements Effect {
       }
       const x = spec.duration > 0 ? (ctx.time - this.#startTime) / spec.duration : 1;
       const t = smoothstep(Math.min(Math.max(x, 0), 1));
-      if (x >= 1) {
+      if (x >= 1 || this.#broken.has(spec.frag)) {
         this.#spec = null;
         this.enabled = false;
         ctx.blit(ctx.src);
@@ -115,19 +120,25 @@ export class TransitionEffect implements Effect {
         return;
       }
       spec.onFrame?.(t, Math.max(x, 0), ctx.deltaTime);
-      ctx.draw({
-        frag: spec.frag,
-        uniforms: {
-          ...spec.uniforms,
-          from,
-          src: ctx.src,
-          t,
-          reverse: spec.reverse ? 1 : 0,
-          resolution: [ctx.dims.elementPixel[0], ctx.dims.elementPixel[1]],
-          time: ctx.time,
-        },
-        target: ctx.target,
-      });
+      try {
+        this.#draw(ctx, spec, from, t);
+      } catch (e) {
+        this.#broken.add(spec.frag);
+        const name = spec.name ?? "?";
+        const lines = describeGlslError(e);
+        if (lines) {
+          console.error(
+            `glide: transition "${name}" failed to compile; cutting to the next slide instead.\n  ${lines.join("\n  ")}`,
+          );
+          console.debug(e);
+        } else {
+          console.error(`glide: transition "${name}" failed; cutting to the next slide instead.`, e);
+        }
+        this.#spec = null;
+        this.enabled = false;
+        ctx.blit(ctx.src);
+        this.#end();
+      }
       return;
     }
 
@@ -138,6 +149,22 @@ export class TransitionEffect implements Effect {
 
     this.enabled = false;
     ctx.blit(ctx.src);
+  }
+
+  #draw(ctx: EffectContext, spec: TransitionSpec, from: EffectRenderTarget, t: number): void {
+    ctx.draw({
+      frag: spec.frag,
+      uniforms: {
+        ...spec.uniforms,
+        from,
+        src: ctx.src,
+        t,
+        reverse: spec.reverse ? 1 : 0,
+        resolution: [ctx.dims.elementPixel[0], ctx.dims.elementPixel[1]],
+        time: ctx.time,
+      },
+      target: ctx.target,
+    });
   }
 
   dispose(): void {

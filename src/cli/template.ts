@@ -6,6 +6,8 @@ export type TemplateOpts = {
   liveReload?: boolean;
   /** false turns off WebGL transitions. */
   transitions?: boolean;
+  /** Custom transition shaders: name -> GLSL source. */
+  shaders?: Record<string, string>;
 };
 
 function escapeHtml(s: string): string {
@@ -37,8 +39,19 @@ const RELOAD_JS = `new EventSource("/__events").onmessage = () => location.reloa
  * The runtime loads as a classic script (IIFE build exposing `Glide`):
  * Chrome blocks module scripts on file://, and the export must open from disk.
  */
+/**
+ * JSON for an inline script. `<` becomes `\u003c`, so `</script` and `<!--`
+ * inside strings (e.g. shader source) cannot end the element.
+ */
+export function serializeForScript(value: unknown): string {
+  return JSON.stringify(value)
+    .replace(/</g, "\\u003c")
+    .replace(/\u2028/g, "\\u2028")
+    .replace(/\u2029/g, "\\u2029");
+}
+
 export function renderHtml(opts: TemplateOpts): string {
-  const runOpts: Record<string, string | boolean> = {};
+  const runOpts: Record<string, unknown> = {};
   if (opts.theme) {
     runOpts.theme = opts.theme;
   }
@@ -48,7 +61,10 @@ export function renderHtml(opts: TemplateOpts): string {
   if (opts.transitions === false) {
     runOpts.transitions = false;
   }
-  const runOptsJs = JSON.stringify(runOpts).replace(/</g, "\\u003c");
+  if (opts.shaders && Object.keys(opts.shaders).length > 0) {
+    runOpts.shaders = opts.shaders;
+  }
+  const runOptsJs = serializeForScript(runOpts);
 
   return `<!doctype html>
 <html lang="en">

@@ -12,6 +12,8 @@ export type Frontmatter = {
   layout?: Layout;
   header: HeaderItem[];
   css?: string;
+  /** Custom transitions: name -> shader path, relative to the markdown. */
+  transitions: Record<string, string>;
   data: Record<string, string>;
 };
 
@@ -47,7 +49,7 @@ export function parseNumber(s: string): number | undefined {
 
 /** Split a leading `---` block off the input. Only flat `key: value` and the `header:` list are supported. */
 export function parseFrontmatter(md: string): { meta: Frontmatter; body: string } {
-  const meta: Frontmatter = { header: [], data: {} };
+  const meta: Frontmatter = { header: [], transitions: {}, data: {} };
   const src = md.replace(/^﻿/, "").replace(/\r\n?/g, "\n");
   const m = src.match(/^\s*---[ \t]*\n([\s\S]*?\n)?---[ \t]*(?:\n|$)/);
   if (!m) {
@@ -55,10 +57,19 @@ export function parseFrontmatter(md: string): { meta: Frontmatter; body: string 
   }
 
   let inHeader = false;
+  let inTransitions = false;
   for (const line of (m[1] ?? "").split("\n")) {
     const t = line.trim();
     if (t === "" || t.startsWith("#")) {
       continue;
+    }
+    if (inTransitions) {
+      const kv = /^\s/.test(line) ? t.match(/^([\w-]+)\s*:\s*(.+)$/) : null;
+      if (kv) {
+        meta.transitions[kv[1].toLowerCase()] = unquote(kv[2].trim());
+        continue;
+      }
+      inTransitions = false;
     }
     if (inHeader) {
       if (t.startsWith("-")) {
@@ -94,6 +105,10 @@ export function parseFrontmatter(md: string): { meta: Frontmatter; body: string 
         break;
       case "css":
         meta.css = value || undefined;
+        break;
+      case "transitions":
+        // Only the nested map form is supported; a scalar is ignored.
+        inTransitions = value === "";
         break;
       case "header":
         if (value) {

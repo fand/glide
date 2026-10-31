@@ -1,5 +1,7 @@
 ---
 title: 発表スライド作ってみた
+transitions:
+  wipe: ./wipe.frag
 ---
 
 <!-- transition: swipe -->
@@ -21,6 +23,9 @@ title: 発表スライド作ってみた
 - 最近はRust書いてます
 
 ---
+
+<!-- transition: wipe -->
+<!-- duration: 1 -->
 
 # 過去作: VEDA
 
