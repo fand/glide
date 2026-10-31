@@ -10,6 +10,75 @@ import {
 
 export type Transitions = { destroy(): void };
 
+/** Content that keeps changing on its own, so the slide needs a capture every frame. */
+const MOVING =
+  "video, canvas, iframe, img[src$='.gif' i], animate, animateTransform, animateMotion";
+
+function wantsFrames(section: HTMLElement, deck: Deck, hic: boolean): boolean {
+  const live = deck.slides[Number(section.dataset.index)]?.live;
+  if (live !== undefined) {
+    return live;
+  }
+  // dom-to-canvas draws only the first GIF frame, so skip the cost there.
+  if (hic && section.querySelector(MOVING)) {
+    return true;
+  }
+  return section.getAnimations({ subtree: true }).some((a) => a.playState === "running");
+}
+
+/** Content the user clicks, types into or drags. */
+const INTERACTIVE =
+  "input, button, select, textarea, details, label, iframe, audio, video[controls], embed, object, [contenteditable], [data-glide-interactive], [onclick], script";
+
+/**
+ * Slides the GPU stage cannot show, so they mount as plain DOM:
+ * - cross-origin iframes (never captured);
+ * - <canvas>: HTML-in-Canvas draws a nested canvas at the wrong size;
+ * - without HTML-in-Canvas, dom-to-canvas cannot draw video, canvas, iframes,
+ *   GIF frames or SMIL, and scripts may add a canvas later;
+ * - when the browser does not hit-test inside the capture canvas, or in the
+ *   fallback, anything interactive.
+ */
+export function needsPlainDom(html: string, hic: boolean, hitTest: boolean): boolean {
+  const tpl = document.createElement("template");
+  tpl.innerHTML = html;
+  const doc = tpl.content;
+  for (const f of doc.querySelectorAll("iframe[src]")) {
+    const src = f.getAttribute("src") ?? "";
+    try {
+      if (new URL(src, document.baseURI).origin !== location.origin) {
+        return true;
+      }
+    } catch {
+      return true;
+    }
+  }
+  if (doc.querySelector("canvas")) {
+    return true;
+  }
+  if (
+    !hic &&
+    doc.querySelector(
+      "video, iframe, script, embed, object, img[src$='.gif' i], animate, animateTransform, animateMotion",
+    )
+  ) {
+    return true;
+  }
+  // dom-to-canvas also loses typed values, scroll positions and toggles.
+  return (!hitTest || !hic) && doc.querySelector(INTERACTIVE) !== null;
+}
+
+/** Whether clicks reach elements inside the capture canvas (needs Chrome's experimental platform features). */
+function probeHitTest(stage: HTMLElement): boolean {
+  const probe = document.createElement("div");
+  probe.style.cssText = "position:absolute;left:0;top:0;width:4px;height:4px;z-index:2147483647";
+  stage.appendChild(probe);
+  const r = probe.getBoundingClientRect();
+  const hit = document.elementFromPoint(r.left + 2, r.top + 2);
+  probe.remove();
+  return hit === probe;
+}
+
 const nextFrame = () => new Promise<void>((r) => requestAnimationFrame(() => r()));
 
 /** Resolve on the wrapper canvas's next `paint` event (a new capture), or after `ms`. */
@@ -86,15 +155,101 @@ export async function attachTransitions(
     }
   }
 
-  // Re-capture when late content (images, fonts) lands, and every frame on live slides.
-  let liveRaf = 0;
-  const liveLoop = () => {
-    void recapture();
-    liveRaf = requestAnimationFrame(liveLoop);
+  const hitTest = !hic || probeHitTest(stage);
+  if (!hitTest) {
+    console.info(
+      "glide: this browser does not send clicks into HTML-in-Canvas, so interactive slides show as plain DOM. Enable chrome://flags/#enable-experimental-web-platform-features to fix.",
+    );
+  }
+
+  // Slides the stage cannot capture mount as plain DOM above it instead.
+  const plain = deck.slides.map((s) =>
+    s.gpu === undefined ? needsPlainDom(s.html + (s.htmlRight ?? ""), hic, hitTest) : !s.gpu,
+  );
+  const isPlain = (i: number) => plain[i] ?? false;
+  deck.setPlainDom(isPlain);
+  function promote(): void {
+    const section = stage.firstElementChild as HTMLElement | null;
+    if (!section) {
+      return;
+    }
+    deck.domLayer.replaceChildren(section);
+    deck.domLayer.classList.add("active");
+    plain[Number(section.dataset.index)] = true;
+  }
+  if (isPlain(deck.current)) {
+    promote();
+  }
+  // A script may add a canvas after mount (p5, three.js); move that slide out
+  // of the stage too, unless the author set `gpu`.
+  const canvasWatch = new MutationObserver(() => {
+    const section = stage.firstElementChild as HTMLElement | null;
+    if (
+      section &&
+      deck.slides[Number(section.dataset.index)]?.gpu === undefined &&
+      section.querySelector("canvas")
+    ) {
+      promote();
+    }
+  });
+  canvasWatch.observe(stage, { childList: true, subtree: true });
+
+  // Without hit testing, links inside the capture canvas would turn the page; open them by hand.
+  const onLinkClick = (e: MouseEvent) => {
+    if (hitTest || e.button !== 0 || !(e.target instanceof HTMLCanvasElement)) {
+      return;
+    }
+    for (const a of stage.querySelectorAll<HTMLAnchorElement>("a[href]")) {
+      for (const r of a.getClientRects()) {
+        if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) {
+          e.stopImmediatePropagation();
+          if (a.target && a.target !== "_self") {
+            window.open(a.href, a.target, a.rel.includes("noopener") ? "noopener" : undefined);
+          } else {
+            location.href = a.href;
+          }
+          return;
+        }
+      }
+    }
   };
+  deck.el.addEventListener("click", onLinkClick, true);
+
+  // Re-capture every frame while the slide moves: `live` slides, slides with
+  // video / canvas / iframe / GIF / SMIL, running CSS animations, and for a
+  // short while after any user input.
+  let kickUntil = 0;
+  const kick = () => {
+    kickUntil = performance.now() + 250;
+  };
+  const KICK_EVENTS = [
+    "pointermove",
+    "pointerdown",
+    "pointerup",
+    "pointerleave",
+    "input",
+    "change",
+    "focusin",
+    "focusout",
+    "keydown",
+    "keyup",
+    "toggle",
+  ];
+  for (const t of KICK_EVENTS) {
+    stage.addEventListener(t, kick, true);
+  }
+  let pumpRaf = 0;
+  const pump = () => {
+    pumpRaf = requestAnimationFrame(pump);
+    const section = stage.firstElementChild as HTMLElement | null;
+    if (section && (performance.now() < kickUntil || wantsFrames(section, deck, hic))) {
+      void recapture();
+    }
+  };
+  pumpRaf = requestAnimationFrame(pump);
+
+  // Re-capture when late content (images, fonts) lands.
   function onMounted(): void {
-    cancelAnimationFrame(liveRaf);
-    liveRaf = 0;
     const section = stage.firstElementChild;
     if (!section) {
       return;
@@ -106,10 +261,6 @@ export async function attachTransitions(
           once: true,
         });
       }
-    }
-    const i = Number((section as HTMLElement).dataset.index);
-    if (deck.slides[i]?.live) {
-      liveRaf = requestAnimationFrame(liveLoop);
     }
   }
   onMounted();
@@ -154,7 +305,8 @@ export async function attachTransitions(
     const owner = ctx.direction === 1 ? entering : leaving;
     const resolved = resolveTransition(owner.transition, local);
 
-    if (!resolved || owner.duration <= 0) {
+    // Plain-DOM slides are not captured, so there is nothing to animate.
+    if (!resolved || owner.duration <= 0 || isPlain(ctx.from) || isPlain(ctx.to)) {
       endActive();
       effect.cancel();
       ctx.mount();
@@ -204,8 +356,14 @@ export async function attachTransitions(
     destroy() {
       destroyed = true;
       stage.removeEventListener("scroll", onScroll, true);
-      cancelAnimationFrame(liveRaf);
+      cancelAnimationFrame(pumpRaf);
+      canvasWatch.disconnect();
+      deck.el.removeEventListener("click", onLinkClick, true);
+      for (const t of KICK_EVENTS) {
+        stage.removeEventListener(t, kick, true);
+      }
       deck.setSwapHandler(null);
+      deck.setPlainDom(null);
       vfx.remove(stage);
       vfx.destroy();
     },

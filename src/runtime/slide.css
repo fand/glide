@@ -188,10 +188,21 @@ body {
 
 /* Overlay */
 
-#overlay {
+/* Slides that the GPU stage cannot capture (see `gpu: false`) show here, above it. */
+#stage-dom {
   position: fixed;
   inset: 0;
   z-index: 1;
+  display: none;
+}
+#stage-dom.active {
+  display: block;
+}
+
+#overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2;
   pointer-events: none;
   color: var(--muted);
   font-size: 0.6rem;

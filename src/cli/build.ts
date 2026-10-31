@@ -52,8 +52,10 @@ function splitFences(md: string): { text: string; code: boolean }[] {
 }
 
 const MD_IMAGE = /(!\[[^\]]*\]\(\s*)(?:<([^>\n]+)>|([^)\s]+))((?:\s+(?:"[^"]*"|'[^']*'))?\s*\))/g;
-const HTML_TAG = /<(?:img|video|source)\b[^>]*>/gi;
-const HTML_ATTR = /(\s(?:src|poster)\s*=\s*)(?:"([^"]*)"|'([^']*)'|([^\s"'>]+))/gi;
+// Tags whose URL attributes point at files the page loads. `<a href>` is left
+// alone: it links to a page rather than loading a file.
+const HTML_TAG = /<(?:img|video|audio|source|track|script|iframe|embed|object|link)\b[^>]*>/gi;
+const HTML_ATTR = /(\s(?:src|poster|href|data)\s*=\s*)(?:"([^"]*)"|'([^']*)'|([^\s"'>]+))/gi;
 
 /** Call `fn` on every local media URL outside code fences and replace it with the result. */
 export function rewriteMedia(md: string, fn: (url: string) => string): string {

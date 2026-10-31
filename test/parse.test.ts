@@ -56,7 +56,8 @@ test("defaults", () => {
   assert.equal(s.duration, 0.5);
   assert.equal(s.layout, "normal");
   assert.equal(s.theme, undefined);
-  assert.equal(s.live, false);
+  assert.equal(s.live, undefined);
+  assert.equal(s.gpu, undefined);
   assert.deepEqual(s.data, {});
   assert.equal(s.htmlRight, undefined);
   assert.match(s.html, /<h1[^>]*>One<\/h1>/);

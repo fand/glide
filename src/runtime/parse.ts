@@ -20,7 +20,13 @@ export type Slide = {
   duration: number;
   layout: Layout;
   theme?: string;
-  live: boolean;
+  /**
+   * Re-capture every frame. Unset = automatic (on when the slide has
+   * <script>, <video>, <canvas>, <iframe> or a GIF).
+   */
+  live?: boolean;
+  /** false: show as plain DOM above the GPU stage (no capture, no transition). Unset = automatic. */
+  gpu?: boolean;
   data: Record<string, string | true>;
 };
 
@@ -121,7 +127,6 @@ export function parse(md: string): ParsedDeck {
       duration: meta.duration ?? DEFAULT_DURATION,
       layout: meta.layout ?? "normal",
       theme: undefined,
-      live: false,
       data: {},
     };
 
@@ -148,6 +153,12 @@ export function parse(md: string): ParsedDeck {
           break;
         case "live":
           slide.live = value === true || str !== "false";
+          break;
+        case "gpu":
+          slide.gpu = value === true || str !== "false";
+          break;
+        case "no-gpu":
+          slide.gpu = false;
           break;
         default:
           slide.data[key] = value;

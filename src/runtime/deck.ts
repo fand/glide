@@ -4,6 +4,7 @@ import themesCss from "./themes.css?inline";
 import hljsCss from "highlight.js/styles/github-dark.css?inline";
 import { attachTransitions, type Transitions } from "./stage.ts";
 import { customTransitions } from "./transitions/custom.ts";
+import { mountScripts, unmountScripts } from "./scripts.ts";
 
 export const DEFAULT_THEME = "mocha";
 
@@ -61,6 +62,13 @@ export type Deck = ParsedDeck & {
   prev(): void;
   goto(index: number): void;
   setSwapHandler(fn: SwapHandler | null): void;
+  /**
+   * Choose which slides mount outside the GPU stage, as plain DOM above it
+   * (used by the transition layer for content it cannot capture).
+   */
+  setPlainDom(fn: ((index: number) => boolean) | null): void;
+  /** The layer that holds plain-DOM slides. */
+  readonly domLayer: HTMLElement;
   destroy(): void;
 };
 
@@ -80,15 +88,15 @@ function isAbsoluteUrl(s: string): boolean {
   return /^([a-z][\w+.-]*:|\/\/|\/|#)/i.test(s);
 }
 
-/** Resolve relative src attributes against `base`, and collect image URLs for preload. */
+/** Resolve relative URLs against `base`, and collect image URLs for preload. */
 function resolveMedia(html: string, base: URL): { html: string; images: string[] } {
   const tpl = document.createElement("template");
   tpl.innerHTML = html;
   const images: string[] = [];
   for (const el of tpl.content.querySelectorAll<HTMLElement>(
-    "img[src], video[src], source[src], video[poster]",
+    "img[src], video[src], video[poster], audio[src], source[src], track[src], script[src], iframe[src], link[href], embed[src], object[data]",
   )) {
-    for (const attr of ["src", "poster"]) {
+    for (const attr of ["src", "poster", "href", "data"]) {
       const v = el.getAttribute(attr);
       if (v === null) {
         continue;
@@ -132,6 +140,42 @@ function fitCode(section: HTMLElement): void {
   }
 }
 
+/** Clicks on these do not turn the page. */
+const INTERACTIVE = [
+  "a",
+  "button",
+  "input",
+  "textarea",
+  "select",
+  "label",
+  "summary",
+  "details",
+  "video",
+  "audio",
+  "canvas",
+  "iframe",
+  "embed",
+  "object",
+  "[contenteditable]",
+  "[tabindex]",
+  "[data-glide-interactive]",
+].join(", ");
+
+/** Keys that these elements use themselves while focused. */
+function keyBelongsToTarget(t: HTMLElement, key: string): boolean {
+  if (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)) {
+    return true;
+  }
+  if (t.closest("[data-glide-interactive]")) {
+    return true;
+  }
+  // Space / Enter press a focused button, link or summary.
+  if ((key === " " || key === "Enter") && t.closest("button, a, summary, [role=button]")) {
+    return true;
+  }
+  return false;
+}
+
 function readHash(): number | null {
   const m = location.hash.match(/^#(\d+)$/);
   return m ? Number(m[1]) - 1 : null;
@@ -167,6 +211,7 @@ export function run(md: string, opts: RunOpts = {}): Deck {
 
   const glide = el("div", { id: "glide", class: `theme-${deckTheme}` });
   const stage = el("div", { id: "stage" });
+  const domLayer = el("div", { id: "stage-dom" });
   const overlay = el("div", { id: "overlay", class: `theme-${deckTheme}` });
   const header = el("div", { class: "header" });
   const counter = el("div", { class: "counter" });
@@ -182,7 +227,7 @@ export function run(md: string, opts: RunOpts = {}): Deck {
     overlay.appendChild(header);
   }
   overlay.appendChild(counter);
-  glide.append(stage, overlay);
+  glide.append(stage, domLayer, overlay);
   root.appendChild(glide);
 
   const preloaded = new Set<string>();
@@ -218,6 +263,7 @@ export function run(md: string, opts: RunOpts = {}): Deck {
   let current = -1;
   let mounted: HTMLElement | null = null;
   let swap: SwapHandler | null = null;
+  let plainDom: ((index: number) => boolean) | null = null;
 
   /** The overlay follows the current slide's theme once its swap has finished. */
   function applyOverlayTheme(): void {
@@ -226,8 +272,19 @@ export function run(md: string, opts: RunOpts = {}): Deck {
 
   function mountSlide(i: number): HTMLElement {
     const section = buildSection(i);
-    stage.replaceChildren(section);
+    if (mounted) {
+      unmountScripts(mounted);
+    }
+    const inDom = plainDom?.(i) ?? false;
+    (inDom ? domLayer : stage).replaceChildren(section);
+    (inDom ? stage : domLayer).replaceChildren();
+    domLayer.classList.toggle("active", inDom);
     mounted = section;
+    void mountScripts(section).then(() => {
+      if (section.isConnected) {
+        section.dispatchEvent(new CustomEvent("glide:mount", { bubbles: true }));
+      }
+    });
     fitCode(section);
     for (const img of section.querySelectorAll("img")) {
       if (!img.complete) {
@@ -320,7 +377,12 @@ export function run(md: string, opts: RunOpts = {}): Deck {
       return;
     }
     const t = e.target as HTMLElement | null;
-    if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) {
+    if (e.key === "Escape" && t && t !== document.body && glide.contains(t)) {
+      // Leave a focused control so the arrow keys turn pages again.
+      t.blur();
+      return;
+    }
+    if (t && t !== document.body && keyBelongsToTarget(t, e.key)) {
       return;
     }
     switch (e.key) {
@@ -355,12 +417,24 @@ export function run(md: string, opts: RunOpts = {}): Deck {
     e.preventDefault();
   }
 
+  // A drag (text selection, slider) ends with a click; it must not turn the page.
+  let downAt: [number, number] | null = null;
+  function onPointerDown(e: PointerEvent): void {
+    downAt = [e.clientX, e.clientY];
+  }
+
   function onClick(e: MouseEvent): void {
     if (e.button !== 0) {
       return;
     }
+    if (downAt && Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]) > 6) {
+      return;
+    }
+    if (String(window.getSelection() ?? "") !== "") {
+      return;
+    }
     const t = e.target as HTMLElement | null;
-    if (t?.closest("a, button, input, textarea, select, video, [contenteditable]")) {
+    if (t?.closest(INTERACTIVE)) {
       return;
     }
     const x = e.clientX / window.innerWidth;
@@ -380,6 +454,7 @@ export function run(md: string, opts: RunOpts = {}): Deck {
 
   window.addEventListener("keydown", onKey);
   window.addEventListener("resize", onResize);
+  glide.addEventListener("pointerdown", onPointerDown);
   glide.addEventListener("click", onClick);
   glide.addEventListener("wheel", onWheel, { passive: false });
   if (useHash) {
@@ -408,8 +483,15 @@ export function run(md: string, opts: RunOpts = {}): Deck {
     setSwapHandler(fn) {
       swap = fn;
     },
+    setPlainDom(fn) {
+      plainDom = fn;
+    },
+    domLayer,
     destroy() {
       destroyed = true;
+      if (mounted) {
+        unmountScripts(mounted);
+      }
       transitions?.destroy();
       window.removeEventListener("keydown", onKey);
       window.removeEventListener("resize", onResize);

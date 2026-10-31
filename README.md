@@ -35,7 +35,7 @@ Options:
 - `-o, --out <dir>`: build output dir (default `./out`)
 - `--export <dir>`: same as `glide build -o <dir>`
 
-The build output is self-contained (`index.html`, `glide.js`, `assets/`).
+The build output is self-contained (`index.html`, `glide.js`, `assets/`). It copies local files that the slides load (`img`, `video`, `audio`, `source`, `track`, `script`, `iframe`, `link`, `embed`, `object`, markdown images) into `assets/`. A copied HTML page (iframe) keeps its own relative links, so those files must be referenced from the markdown too or kept next to it by hand.
 It opens from `file://`, but without transitions (browsers treat each local file as cross-origin, so the canvas capture drops images). Serve the folder over http to get transitions.
 
 ### As a library
@@ -85,7 +85,7 @@ header:
 
 - Slides split on `---` lines (ignored inside code fences).
 - Frontmatter keys: `title`, `theme`, `transition`, `duration` (seconds), `layout`, `css` (extra stylesheet, relative to the md), `header` (items shown at the top right), `transitions` (custom shaders, see [Custom transitions](#custom-transitions)).
-- Per-slide directives at the top of a slide: `<!-- transition: NAME ARGS -->`, `<!-- duration: N -->`, `<!-- layout: ... -->`, `<!-- theme: ... -->`, `<!-- live -->`. They override the frontmatter.
+- Per-slide directives at the top of a slide: `<!-- transition: NAME ARGS -->`, `<!-- duration: N -->`, `<!-- layout: ... -->`, `<!-- theme: ... -->`, `<!-- live -->`, `<!-- gpu: false -->`. They override the frontmatter.
 - `|||` splits a `two-column` slide into left and right.
 - Raw HTML works, e.g. `<img src="cat.gif" class="center w-60">`. Utility classes: `center`, `w-20` `w-30` `w-40` `w-60` `w-70` `w-80` `w-100`.
 
@@ -105,6 +105,47 @@ header:
 - `Home` / `End`
 - Scroll a slide taller than the screen: `↓` `j` / `↑` `k`, or the mouse wheel
 - `#N` in the URL opens slide N
+- Clicks on links, form controls, `canvas`, `video`, `audio`, `iframe`, `summary`, `label`, elements with `tabindex`, and anything inside `[data-glide-interactive]` do not turn the page. Neither does a drag (text selection, slider).
+- Keys go to a focused text field, slider or select, and `Space` / `Enter` to a focused button or link. Press `Esc` to give the keys back to the deck. Inside `[data-glide-interactive]`, the deck ignores all keys.
+
+## Interactive slides
+
+Every slide is plain HTML, so it can hold video, iframes, canvases, forms and its own `<script>`. See [`examples/demo2.md`](examples/demo2.md).
+
+### Scripts
+
+glide runs a slide's `<script>` tags each time the slide mounts (the slide's DOM is rebuilt every time), in document order:
+
+- Inline scripts run on every mount. Classic ones are wrapped in a `{ }` block, so top-level `let` / `const` do not clash with the last mount. `function` declarations inside them are not global; assign to `window` if you need a global.
+- External scripts (`<script src>`) load once per page and are skipped on later mounts. Put per-mount code inline.
+- A classic script waits for the external scripts above it, so `<script src="p5.js">` then an inline script works. Module scripts (`type="module"`) run when they are ready.
+
+Find your slide and clean up when it leaves:
+
+```html
+<canvas id="c"></canvas>
+<script>
+  const slide = Glide.currentSlide();          // the <section> being mounted
+  const ctx = slide.querySelector("#c").getContext("2d");
+  let raf = requestAnimationFrame(function loop() { /* draw */ raf = requestAnimationFrame(loop); });
+  Glide.onUnmount(() => cancelAnimationFrame(raf));   // stop loops, p5.remove(), loseContext(), ...
+</script>
+```
+
+`Glide.currentSlide()` and `Glide.onUnmount()` work in classic and module scripts. With the npm package, import `currentSlide` and `onUnmount` instead. The section also fires `glide:mount` (after its scripts start) and `glide:unmount` (before it is removed). With a transition, the old slide is unmounted after its last frame has been captured.
+
+### What the GPU stage can show
+
+Transitions work on a capture of the slide. glide re-captures every frame while the slide has `video`, `canvas`, `iframe`, a GIF, SMIL, a running CSS animation, or right after user input. Each capture costs one full-screen texture upload per frame. Set `<!-- live: false -->` to stop that, or `<!-- live -->` to force it.
+
+Some content cannot be captured. glide then shows the slide as plain DOM above the GPU stage, with no transition in or out (a plain cut):
+
+- cross-origin iframes (YouTube, ...): never captured;
+- `<canvas>` (2D, WebGL, p5.js, three.js): HTML-in-Canvas draws a nested canvas at the wrong size, so canvas slides are plain DOM. A canvas that a script adds later moves the slide out of the stage when it appears;
+- without HTML-in-Canvas (the fallback): also video, iframes, GIFs, SMIL, scripts and interactive content, since dom-to-canvas cannot draw them or loses their state (typed text, scroll position);
+- if the browser does not send clicks into HTML-in-Canvas (Chrome without `chrome://flags/#enable-experimental-web-platform-features`): slides with form controls, iframes, audio, scripts, `[onclick]` or `[data-glide-interactive]`. Links still work. Hover styles need hit testing too, so mark hover targets with `data-glide-interactive`.
+
+Force it either way with `<!-- gpu: false -->` (plain DOM) or `<!-- gpu: true -->` (always capture).
 
 ## Transitions
 
@@ -128,7 +169,7 @@ Set them per deck (frontmatter) or per slide (directive). A slide's transition p
 
 Unknown names fall back to `crossfade`. `duration` is in seconds (default `0.5`).
 
-Mark a slide with `<!-- live -->` when it has moving content (GIF, video, CSS animation); glide then re-captures it every frame.
+Moving content is re-captured every frame automatically; see [What the GPU stage can show](#what-the-gpu-stage-can-show).
 
 ### Custom transitions
 
