@@ -39,6 +39,8 @@ export type SwapContext = {
 /**
  * Replaces the old slide with the new one. The default calls `mount()` right away.
  * A transition can snapshot `ctx.current` first, then call `mount()` and animate.
+ * Resolve the returned promise when the animation ends: the overlay (header,
+ * page counter) switches to the new slide's theme then.
  */
 export type SwapHandler = (ctx: SwapContext) => void | Promise<void>;
 
@@ -193,11 +195,15 @@ export function run(md: string, opts: RunOpts = {}): Deck {
   let mounted: HTMLElement | null = null;
   let swap: SwapHandler | null = null;
 
+  /** The overlay follows the current slide's theme once its swap has finished. */
+  function applyOverlayTheme(): void {
+    overlay.className = `theme-${slides[current]?.theme ?? deckTheme}`;
+  }
+
   function mountSlide(i: number): HTMLElement {
     const section = buildSection(i);
     stage.replaceChildren(section);
     mounted = section;
-    overlay.className = `theme-${slides[i].theme ?? deckTheme}`;
     counter.textContent = `${i + 1} / ${slides.length}`;
     preload(i + 1);
     preload(i - 1);
@@ -220,6 +226,7 @@ export function run(md: string, opts: RunOpts = {}): Deck {
 
     if (from < 0) {
       mountSlide(to);
+      applyOverlayTheme();
       return;
     }
 
@@ -234,12 +241,20 @@ export function run(md: string, opts: RunOpts = {}): Deck {
     };
     const handler = swap;
     if (handler) {
-      (async () => handler(ctx))().catch((e) => {
-        console.error(e);
-        ctx.mount();
-      });
+      (async () => handler(ctx))()
+        .catch((e) => {
+          console.error(e);
+          ctx.mount();
+        })
+        .finally(() => {
+          // A stale swap ending early must not repaint the overlay mid-transition.
+          if (current === to) {
+            applyOverlayTheme();
+          }
+        });
     } else {
       ctx.mount();
+      applyOverlayTheme();
     }
 
     const detail: ChangeDetail = { from, to, direction };

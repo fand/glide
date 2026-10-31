@@ -2,6 +2,10 @@ import type { Transition } from "../frontmatter.ts";
 import type { TransitionDef, TransitionUniforms } from "./types.ts";
 import { crossfade } from "./crossfade.ts";
 import { swipe } from "./swipe.ts";
+import { zoom } from "./zoom.ts";
+import { zoomBlur } from "./zoom-blur.ts";
+import { glitchSlide } from "./glitch-slide.ts";
+import { glitch } from "./glitch.ts";
 
 export type { TransitionDef, TransitionUniforms } from "./types.ts";
 
@@ -20,6 +24,15 @@ export function registerTransition(def: TransitionDef, aliases: string[] = []): 
 
 registerTransition(crossfade);
 registerTransition(swipe);
+registerTransition(zoom);
+registerTransition(zoomBlur, ["zoom-blur"]);
+registerTransition(glitchSlide, ["glitch-slide"]);
+registerTransition(glitch);
+
+/** Names of all registered transitions (not aliases). */
+export function transitionNames(): string[] {
+  return [...REGISTRY.keys()];
+}
 
 export type ResolvedTransition = { def: TransitionDef; uniforms: TransitionUniforms };
 

@@ -26,6 +26,14 @@ export class TransitionEffect implements Effect {
   #hold = false;
   #spec: TransitionSpec | null = null;
   #startTime: number | null = null;
+  #onEnd: (() => void) | null = null;
+
+  /** Settle the promise from `start()`. */
+  #end(): void {
+    const f = this.#onEnd;
+    this.#onEnd = null;
+    f?.();
+  }
 
   init(ctx: EffectContext): void {
     this.#from = ctx.createRenderTarget();
@@ -33,19 +41,26 @@ export class TransitionEffect implements Effect {
 
   /** Copy the current capture into `from` on the next frame and hold it on screen. */
   snapshot(): Promise<void> {
+    this.#end();
     this.enabled = true;
     return new Promise((resolve) => this.#snapshotWaiters.push(resolve));
   }
 
-  start(spec: TransitionSpec): void {
+  /** Resolves when the transition ends or another one replaces it. */
+  start(spec: TransitionSpec): Promise<void> {
+    this.#end();
     this.#spec = spec;
     this.#startTime = null;
     this.#hold = false;
     this.enabled = true;
+    return new Promise((resolve) => {
+      this.#onEnd = resolve;
+    });
   }
 
   /** Stop any transition and pass the capture through. */
   cancel(): void {
+    this.#end();
     this.#spec = null;
     this.#hold = false;
     if (this.#snapshotWaiters.length === 0) {
@@ -86,6 +101,7 @@ export class TransitionEffect implements Effect {
         this.#spec = null;
         this.enabled = false;
         ctx.blit(ctx.src);
+        this.#end();
         return;
       }
       ctx.draw({
@@ -115,6 +131,7 @@ export class TransitionEffect implements Effect {
 
   dispose(): void {
     this.#from = null;
+    this.#end();
     for (const w of this.#snapshotWaiters) {
       w();
     }

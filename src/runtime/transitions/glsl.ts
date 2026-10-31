@@ -33,9 +33,15 @@ vec4 readTo(vec2 p) {
 }
 `;
 
+/**
+ * Like old glide: a pixel partly covered (e.g. blur samples that fell outside
+ * the slide) becomes opaque with its average color. Fully empty stays empty.
+ * Output is premultiplied, so alpha 1 keeps rgb as is.
+ */
 export const MAIN = `
 void main() {
-  outColor = transition(uvContent, reverse > 0.5 ? 1.0 - t : t);
+  vec4 c = transition(uvContent, reverse > 0.5 ? 1.0 - t : t);
+  outColor = c.a > 0.0 ? vec4(c.rgb / c.a, 1.0) : vec4(0.0);
 }
 `;
 

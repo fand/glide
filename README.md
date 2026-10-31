@@ -110,11 +110,15 @@ Other browsers use a slower fallback (dom-to-canvas), where animated GIFs and vi
 
 Set them per deck (frontmatter) or per slide (directive). A slide's transition plays when you move to it; moving back plays it in reverse.
 
-| Name | Aliases | Args |
+| Name | Aliases | Description |
 | --- | --- | --- |
-| `crossfade` (default) | `fade` | |
-| `swipe` | `slide` | `left` (default), `right`, `up`, `down`: the way the content moves. `swipe left` moves the old slide out to the left and brings the new one in from the right. |
-| `none` | | no animation |
+| `crossfade` (default) | `fade` | Fades the old slide into the new one. |
+| `swipe` | `slide` | Slides the new slide in. Arg `left` (default), `right`, `up`, `down` is the way the content moves: `swipe left` moves the old slide out to the left and brings the new one in from the right. |
+| `zoom` | | The old slide shrinks into the center while the new one grows out of it. |
+| `zoom_blur` | `zoom-blur` | Crossfade with a radial blur and RGB split that peaks halfway. |
+| `glitch_slide` | `glitch-slide` | Rows slide sideways with RGB split; the slide swaps halfway. |
+| `glitch` | | Jittery RGB-split offsets; the slide swaps halfway. |
+| `none` | | No animation. |
 
 Unknown names fall back to `crossfade`. `duration` is in seconds (default `0.5`).
 

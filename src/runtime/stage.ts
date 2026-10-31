@@ -139,7 +139,7 @@ export async function attachTransitions(deck: Deck): Promise<Transitions> {
     if (id !== seq) {
       return;
     }
-    effect.start({
+    await effect.start({
       frag: fragOf(resolved.def),
       uniforms: resolved.uniforms,
       duration: owner.duration,
