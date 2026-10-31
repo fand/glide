@@ -177,7 +177,7 @@ If a shader fails to compile, glide logs the error to the console and cuts strai
 
 ```
 $ pnpm install
-$ pnpm start          # build, then serve examples/demo.md with the CLI
+$ pnpm start [file.md]  # build, then serve with the CLI (default: examples/demo.md)
 $ pnpm dev            # Vite dev server on src/runtime (no CLI)
 $ pnpm build
 $ pnpm test
