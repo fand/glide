@@ -13,8 +13,8 @@
   "scripts": {
     "dev": "run-p dev:*",
     "dev:js": "vite",
-    "dev:rust": "sleep 1 && cd rust && cargo watch -x run",
-    "build": "tsc && vite build && electron-builder"
+    "dev:rust": "sleep 1 && cd rust && CMAKE_POLICY_VERSION_MINIMUM=3.5 cargo watch -x run",
+    "build": "tsc && vite build && CMAKE_POLICY_VERSION_MINIMUM=3.5 electron-builder"
   },
   "dependencies": {
     "chokidar": "^3.5.3",
