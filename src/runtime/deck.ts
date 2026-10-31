@@ -108,6 +108,24 @@ function el<K extends keyof HTMLElementTagNameMap>(
   return e;
 }
 
+const MIN_CODE_SCALE = 0.6;
+
+/**
+ * Shrink code blocks (down to MIN_CODE_SCALE) until the slide fits.
+ * Whatever still overflows can be scrolled with ↓/↑.
+ */
+function fitCode(section: HTMLElement): void {
+  if (!section.querySelector("pre")) {
+    return;
+  }
+  let scale = 1;
+  section.style.removeProperty("--code-scale");
+  while (section.scrollHeight > section.clientHeight + 1 && scale > MIN_CODE_SCALE) {
+    scale = Math.max(MIN_CODE_SCALE, scale - 0.05);
+    section.style.setProperty("--code-scale", String(scale));
+  }
+}
+
 function readHash(): number | null {
   const m = location.hash.match(/^#(\d+)$/);
   return m ? Number(m[1]) - 1 : null;
@@ -204,10 +222,37 @@ export function run(md: string, opts: RunOpts = {}): Deck {
     const section = buildSection(i);
     stage.replaceChildren(section);
     mounted = section;
+    fitCode(section);
+    for (const img of section.querySelectorAll("img")) {
+      if (!img.complete) {
+        img.addEventListener("load", () => fitCode(section), { once: true });
+      }
+    }
     counter.textContent = `${i + 1} / ${slides.length}`;
     preload(i + 1);
     preload(i - 1);
     return section;
+  }
+
+  function scrollSlide(dir: 1 | -1): void {
+    mounted?.scrollBy({ top: dir * mounted.clientHeight * 0.25 });
+  }
+
+  // Scroll by hand: native wheel scrolling does not reach children of an
+  // HTML-in-Canvas wrapper.
+  function onWheel(e: WheelEvent): void {
+    if (!mounted || e.ctrlKey || mounted.scrollHeight <= mounted.clientHeight) {
+      return;
+    }
+    e.preventDefault();
+    const line = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? mounted.clientHeight : 1;
+    mounted.scrollBy({ top: e.deltaY * line });
+  }
+
+  function onResize(): void {
+    if (mounted) {
+      fitCode(mounted);
+    }
   }
 
   function goto(index: number): void {
@@ -290,6 +335,14 @@ export function run(md: string, opts: RunOpts = {}): Deck {
       case "End":
         goto(slides.length - 1);
         break;
+      case "ArrowDown":
+      case "j":
+        scrollSlide(1);
+        break;
+      case "ArrowUp":
+      case "k":
+        scrollSlide(-1);
+        break;
       default:
         return;
     }
@@ -320,7 +373,9 @@ export function run(md: string, opts: RunOpts = {}): Deck {
   }
 
   window.addEventListener("keydown", onKey);
+  window.addEventListener("resize", onResize);
   glide.addEventListener("click", onClick);
+  glide.addEventListener("wheel", onWheel, { passive: false });
   if (useHash) {
     window.addEventListener("hashchange", onHashChange);
   }
@@ -351,6 +406,7 @@ export function run(md: string, opts: RunOpts = {}): Deck {
       destroyed = true;
       transitions?.destroy();
       window.removeEventListener("keydown", onKey);
+      window.removeEventListener("resize", onResize);
       window.removeEventListener("hashchange", onHashChange);
       glide.remove();
       cssLink?.remove();

@@ -106,6 +106,9 @@ export async function attachTransitions(deck: Deck): Promise<Transitions> {
     }
   }
   onMounted();
+  // Scrolling a tall slide changes what is painted.
+  const onScroll = () => void recapture();
+  stage.addEventListener("scroll", onScroll, true);
   void document.fonts?.ready.then(() => recapture());
   void recapture();
 
@@ -150,6 +153,7 @@ export async function attachTransitions(deck: Deck): Promise<Transitions> {
   return {
     destroy() {
       destroyed = true;
+      stage.removeEventListener("scroll", onScroll, true);
       cancelAnimationFrame(liveRaf);
       deck.setSwapHandler(null);
       vfx.remove(stage);

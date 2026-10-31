@@ -11,13 +11,21 @@ vec4 splitRead(vec2 uvr, vec2 uvg, vec2 uvb, bool to) {
   return vec4(r.r, g.g, b.b, (r.a + g.a + b.a) / 3.0);
 }
 
+// Interleaved gradient noise (Jimenez 2014): a per-pixel offset in [0, 1)
+// that hides the rings 16 taps leave over a long blur.
+float ign(vec2 p) {
+  return fract(52.9829189 * fract(dot(p, vec2(0.06711056, 0.00583715))));
+}
+
 vec4 transition(vec2 uv, float t) {
+  float jitter = ign(gl_FragCoord.xy);
   float blur = sin(t * 3.141593);
   vec2 offset = vec2(t * 2.0 - 1.0, 0.0) * 0.01 * blur;
 
   vec4 c1 = vec4(0.0);
   vec4 c2 = vec4(0.0);
-  for (float i = 0.0; i < 16.0; i += 1.0) {
+  for (float n = 0.0; n < 16.0; n += 1.0) {
+    float i = n + jitter;
     vec2 uvr = (uv - 0.5) * (1.0 - blur * i * 0.02) + offset * i + 0.5;
     vec2 uvg = (uv - 0.5) * (1.0 - blur * i * 0.04) + offset * i + 0.5;
     vec2 uvb = (uv - 0.5) * (1.0 - blur * i * 0.05) + offset * i + 0.5;

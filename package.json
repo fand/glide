@@ -28,7 +28,8 @@
     "build:cli": "esbuild src/cli/index.ts --bundle --platform=node --format=esm --target=node20 --packages=external --banner:js='#!/usr/bin/env node' --outfile=dist/cli.js",
     "dev": "vite",
     "typecheck": "tsc --noEmit",
-    "test": "node --test --experimental-strip-types \"test/**/*.test.ts\""
+    "test": "node --test --experimental-strip-types \"test/**/*.test.ts\"",
+    "prepublishOnly": "npm run typecheck && npm test && npm run build"
   },
   "dependencies": {
     "@vfx-js/core": "^1.1.0",

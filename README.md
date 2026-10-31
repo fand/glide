@@ -1,4 +1,4 @@
-<img align="center" src="/build/glide_banner_for_readme.png"/>
+<img align="center" src="https://raw.githubusercontent.com/fand/glide/main/build/glide_banner_for_readme.png"/>
 
 
 # GLIDE
@@ -13,7 +13,10 @@ Markdown slideshow with GPU transitions.
 $ npm i -g @fand/glide
 ```
 
-Requires Node.js 20+.
+Requirements:
+
+- Node.js 20+ for the CLI.
+- Browser: GPU transitions need Chrome with `chrome://flags/#canvas-draw-element` enabled. Other browsers use a slower fallback; `--no-gpu` turns transitions off.
 
 ## Usage
 
@@ -100,6 +103,7 @@ header:
 - Next: `→` `l` `Space` `PageDown`, or click the right side
 - Prev: `←` `h` `PageUp`, or click the left side
 - `Home` / `End`
+- Scroll a slide taller than the screen: `↓` `j` / `↑` `k`, or the mouse wheel
 - `#N` in the URL opens slide N
 
 ## Transitions

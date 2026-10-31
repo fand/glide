@@ -1,5 +1,6 @@
 html {
-  font-size: min(2.5vw, 4.5vh);
+  /* About 32px on a 1440px-wide window, like glide v1. */
+  font-size: min(2.2vw, 3.9vh);
 }
 
 html,
@@ -33,25 +34,27 @@ body {
   overflow: hidden;
 }
 
+/* Content taller than the screen scrolls with ↓/↑ (scrollbar hidden). */
 .slide {
   position: absolute;
   inset: 0;
   box-sizing: border-box;
-  overflow: hidden;
+  overflow: hidden auto;
+  scrollbar-width: none;
   background: var(--bg);
   color: var(--fg);
 }
 
 .slide.layout-normal {
-  padding: 2.5rem 12.5% 3rem;
+  padding: 2rem 12.5% 2rem;
 }
 
 .slide.layout-center {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  padding: 2.5rem 10%;
+  justify-content: safe center;
+  padding: 2rem 10%;
   text-align: center;
 }
 
@@ -59,7 +62,7 @@ body {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 3rem;
-  padding: 2.5rem 8% 3rem;
+  padding: 2rem 8%;
 }
 
 .slide .col {
@@ -137,8 +140,8 @@ body {
   overflow-x: auto;
   background: var(--code-bg);
   color: var(--code-fg);
-  font-size: 0.7rem;
-  line-height: 1.4;
+  font-size: calc(0.7rem * var(--code-scale, 1));
+  line-height: 1.35;
 }
 
 .slide table {
@@ -153,7 +156,8 @@ body {
 .slide img,
 .slide video {
   max-width: 100%;
-  max-height: 70vh;
+  max-height: 60vh;
+  object-fit: contain;
 }
 
 .slide hr {
@@ -177,8 +181,8 @@ body {
 .slide .w-70 { width: 70%; }
 .slide .w-80 { width: 80%; }
 .slide .w-100 { width: 100%; }
+/* Keep the box width; contain the picture so a tall image never pushes content off-screen. */
 .slide img[class*="w-"] {
-  max-height: none;
   height: auto;
 }
 
