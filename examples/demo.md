@@ -30,6 +30,9 @@ Atom上でWebGLライブコーディングができるプラグイン
 
 ---
 
+<!-- transition: datamosh -->
+<!-- duration: 1.5 -->
+
 # 過去作: REACT-VFX
 
 <img src="react-vfx.gif" class="center w-80"/>
@@ -177,6 +180,9 @@ Webアプリ
     （仕事でやったことがある）
 
 ---
+
+<!-- transition: pixelsort -->
+<!-- duration: 1.2 -->
 
 ## 案2: MarkdownをGLで描画する
 

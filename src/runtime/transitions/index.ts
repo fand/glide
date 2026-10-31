@@ -6,8 +6,10 @@ import { zoom } from "./zoom.ts";
 import { zoomBlur } from "./zoom-blur.ts";
 import { glitchSlide } from "./glitch-slide.ts";
 import { glitch } from "./glitch.ts";
+import { datamosh } from "./datamosh.ts";
+import { pixelsort } from "./pixelsort.ts";
 
-export type { TransitionDef, TransitionUniforms } from "./types.ts";
+export type { TransitionDef, TransitionRun, TransitionUniforms } from "./types.ts";
 
 const REGISTRY = new Map<string, TransitionDef>();
 const ALIASES = new Map<string, string>([
@@ -28,6 +30,8 @@ registerTransition(zoom);
 registerTransition(zoomBlur, ["zoom-blur"]);
 registerTransition(glitchSlide, ["glitch-slide"]);
 registerTransition(glitch);
+registerTransition(datamosh);
+registerTransition(pixelsort);
 
 /** Names of all registered transitions (not aliases). */
 export function transitionNames(): string[] {

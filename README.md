@@ -122,6 +122,8 @@ Set them per deck (frontmatter) or per slide (directive). A slide's transition p
 | `zoom_blur` | `zoom-blur` | Crossfade with a radial blur and RGB split that peaks halfway. |
 | `glitch_slide` | `glitch-slide` | Rows slide sideways with RGB split; the slide swaps halfway. |
 | `glitch` | | Jittery RGB-split offsets; the slide swaps halfway. |
+| `datamosh` | | Hard cut through a datamosh: the old slide's blocks smear into the new one, hold for 25% of `duration`, then heal block by block. Arg: block size in px (default `32`). |
+| `pixelsort` | | The old slide melts into sorted pixel streaks, and the new one sorts back out. Arg `up` (default), `down`, `left`, `right`: the sort direction. |
 | `none` | | No animation. |
 
 Unknown names fall back to `crossfade`. `duration` is in seconds (default `0.5`).

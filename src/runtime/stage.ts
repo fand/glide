@@ -1,4 +1,4 @@
-import { VFX, supportsHtmlInCanvas } from "@vfx-js/core";
+import { VFX, supportsHtmlInCanvas, type Effect } from "@vfx-js/core";
 import type { Deck } from "./deck.ts";
 import { TransitionEffect } from "./transitions/base.ts";
 import { buildFrag } from "./transitions/glsl.ts";
@@ -112,6 +112,33 @@ export async function attachTransitions(deck: Deck): Promise<Transitions> {
   void document.fonts?.ready.then(() => recapture());
   void recapture();
 
+  // Driver effects (datamosh, pixelsort, ...) are created on first use and
+  // appended to the chain after `effect`. They pass through while idle.
+  const driverFx = new Map<TransitionDef, Effect[]>();
+  const chain: Effect[] = [effect];
+  async function ensureFx(def: TransitionDef): Promise<Effect[]> {
+    let fx = driverFx.get(def);
+    if (!fx) {
+      fx = def.effects ? await def.effects() : [];
+      driverFx.set(def, fx);
+      if (fx.length > 0) {
+        chain.push(...fx);
+        await vfx.updateEffects(stage, [...chain]);
+      }
+    }
+    return fx;
+  }
+
+  // The driver run that owns the driver effects right now.
+  let active: { id: number; def: TransitionDef; fx: Effect[] } | null = null;
+  function endActive(id?: number): void {
+    if (active && (id === undefined || active.id === id)) {
+      const { def, fx } = active;
+      active = null;
+      def.onEnd?.(fx);
+    }
+  }
+
   let seq = 0;
   deck.setSwapHandler(async (ctx) => {
     const id = ++seq;
@@ -121,6 +148,7 @@ export async function attachTransitions(deck: Deck): Promise<Transitions> {
     const resolved = resolveTransition(owner.transition);
 
     if (!resolved || owner.duration <= 0) {
+      endActive();
       effect.cancel();
       ctx.mount();
       onMounted();
@@ -128,9 +156,21 @@ export async function attachTransitions(deck: Deck): Promise<Transitions> {
       return;
     }
 
+    const { def, uniforms } = resolved;
+    const fx = await ensureFx(def);
+    if (id !== seq) {
+      return;
+    }
+
     await effect.snapshot();
     if (id !== seq || deck.current !== ctx.to) {
       return;
+    }
+    endActive();
+    const reverse = ctx.direction === -1;
+    if (fx.length > 0 || def.prepare) {
+      active = { id, def, fx };
+      def.prepare?.({ reverse, args: owner.transition.args, uniforms, duration: owner.duration }, fx);
     }
     ctx.mount();
     onMounted();
@@ -143,10 +183,12 @@ export async function attachTransitions(deck: Deck): Promise<Transitions> {
       return;
     }
     await effect.start({
-      frag: fragOf(resolved.def),
-      uniforms: resolved.uniforms,
+      frag: fragOf(def),
+      uniforms,
       duration: owner.duration,
-      reverse: ctx.direction === -1,
+      reverse,
+      onFrame: def.onFrame ? (t, x, dt) => def.onFrame?.(t, x, dt, fx) : undefined,
+      onEnd: () => endActive(id),
     });
   });
 

@@ -8,6 +8,10 @@ export type TransitionSpec = {
   duration: number;
   /** Play backwards with the roles of the old and new slide swapped. */
   reverse: boolean;
+  /** Per-frame hook. `t` is eased, `x` linear, `dt` in seconds. */
+  onFrame?(t: number, x: number, dt: number): void;
+  /** Called once when this run finishes or is replaced. */
+  onEnd?(): void;
 };
 
 const smoothstep = (x: number) => x * x * (3 - 2 * x);
@@ -28,8 +32,13 @@ export class TransitionEffect implements Effect {
   #startTime: number | null = null;
   #onEnd: (() => void) | null = null;
 
-  /** Settle the promise from `start()`. */
+  #endHook: (() => void) | null = null;
+
+  /** End the current run: call its `onEnd` and settle the promise from `start()`. */
   #end(): void {
+    const hook = this.#endHook;
+    this.#endHook = null;
+    hook?.();
     const f = this.#onEnd;
     this.#onEnd = null;
     f?.();
@@ -50,6 +59,7 @@ export class TransitionEffect implements Effect {
   start(spec: TransitionSpec): Promise<void> {
     this.#end();
     this.#spec = spec;
+    this.#endHook = spec.onEnd ?? null;
     this.#startTime = null;
     this.#hold = false;
     this.enabled = true;
@@ -104,6 +114,7 @@ export class TransitionEffect implements Effect {
         this.#end();
         return;
       }
+      spec.onFrame?.(t, Math.max(x, 0), ctx.deltaTime);
       ctx.draw({
         frag: spec.frag,
         uniforms: {

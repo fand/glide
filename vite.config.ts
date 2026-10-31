@@ -14,5 +14,9 @@ export default defineConfig({
     outDir: "dist",
     emptyOutDir: true,
     copyPublicDir: false,
+    rollupOptions: {
+      // Keep one file per format; effects are imported lazily in code only.
+      output: { inlineDynamicImports: true },
+    },
   },
 });

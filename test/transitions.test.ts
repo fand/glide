@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import { resolveTransition, transitionNames } from "../src/runtime/transitions/index.ts";
 import { buildFrag } from "../src/runtime/transitions/glsl.ts";
 import { parseTransition } from "../src/runtime/frontmatter.ts";
+import { parseDatamoshArgs } from "../src/runtime/transitions/datamosh.ts";
+import { parsePixelSortArgs } from "../src/runtime/transitions/pixelsort.ts";
 
 const resolve = (s: string) => resolveTransition(parseTransition(s));
 
@@ -28,14 +30,18 @@ test("all transitions and aliases resolve", (t) => {
     glitch_slide: "glitch_slide",
     "glitch-slide": "glitch_slide",
     glitch: "glitch",
+    datamosh: "datamosh",
+    pixelsort: "pixelsort",
   };
   for (const [name, def] of Object.entries(expected)) {
     assert.equal(resolve(name)?.def.name, def, name);
   }
   assert.deepEqual(transitionNames().sort(), [
     "crossfade",
+    "datamosh",
     "glitch",
     "glitch_slide",
+    "pixelsort",
     "swipe",
     "zoom",
     "zoom_blur",
@@ -69,4 +75,21 @@ test("frag has the prelude, body and main", () => {
   assert.match(f, /vec4 readFrom\(vec2 p\)/);
   assert.match(f, /vec4 transition\(vec2 uv, float t\)/);
   assert.match(f, /void main\(\)/);
+});
+
+test("effect-based transitions have drivers and parse args", () => {
+  for (const name of ["datamosh", "pixelsort"]) {
+    const def = resolve(name)!.def;
+    assert.equal(typeof def.effects, "function", name);
+    assert.equal(typeof def.prepare, "function", name);
+    assert.equal(typeof def.onFrame, "function", name);
+    assert.equal(typeof def.onEnd, "function", name);
+  }
+  assert.deepEqual(parseDatamoshArgs([]), { blockSize: 32 });
+  assert.deepEqual(parseDatamoshArgs(["16"]), { blockSize: 16 });
+  assert.deepEqual(parseDatamoshArgs(["big"]), { blockSize: 32 });
+  assert.deepEqual(parseDatamoshArgs(["1"]), { blockSize: 32 });
+  assert.deepEqual(parsePixelSortArgs([]), { direction: "up" });
+  assert.deepEqual(parsePixelSortArgs(["left"]), { direction: "left" });
+  assert.deepEqual(parsePixelSortArgs(["sideways"]), { direction: "up" });
 });
