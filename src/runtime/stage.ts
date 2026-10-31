@@ -28,12 +28,11 @@ function wantsFrames(section: HTMLElement, deck: Deck, hic: boolean): boolean {
 
 /** Content the user clicks, types into or drags. */
 const INTERACTIVE =
-  "input, button, select, textarea, details, label, iframe, audio, video[controls], embed, object, [contenteditable], [data-glide-interactive], [onclick], script";
+  "input, button, select, textarea, details, label, iframe, audio, video[controls], embed, object, [contenteditable], [data-glide-interactive], [onclick]";
 
 /**
  * Slides the GPU stage cannot show, so they mount as plain DOM:
  * - cross-origin iframes (never captured);
- * - <canvas>: HTML-in-Canvas draws a nested canvas at the wrong size;
  * - without HTML-in-Canvas, dom-to-canvas cannot draw video, canvas, iframes,
  *   GIF frames or SMIL, and scripts may add a canvas later;
  * - when the browser does not hit-test inside the capture canvas, or in the
@@ -53,13 +52,10 @@ export function needsPlainDom(html: string, hic: boolean, hitTest: boolean): boo
       return true;
     }
   }
-  if (doc.querySelector("canvas")) {
-    return true;
-  }
   if (
     !hic &&
     doc.querySelector(
-      "video, iframe, script, embed, object, img[src$='.gif' i], animate, animateTransform, animateMotion",
+      "video, canvas, iframe, script, embed, object, img[src$='.gif' i], animate, animateTransform, animateMotion",
     )
   ) {
     return true;
@@ -168,31 +164,12 @@ export async function attachTransitions(
   );
   const isPlain = (i: number) => plain[i] ?? false;
   deck.setPlainDom(isPlain);
-  function promote(): void {
-    const section = stage.firstElementChild as HTMLElement | null;
-    if (!section) {
-      return;
-    }
-    deck.domLayer.replaceChildren(section);
+  // The first slide mounted before the stage existed; move it if needed.
+  const first = stage.firstElementChild;
+  if (first && isPlain(deck.current)) {
+    deck.domLayer.replaceChildren(first);
     deck.domLayer.classList.add("active");
-    plain[Number(section.dataset.index)] = true;
   }
-  if (isPlain(deck.current)) {
-    promote();
-  }
-  // A script may add a canvas after mount (p5, three.js); move that slide out
-  // of the stage too, unless the author set `gpu`.
-  const canvasWatch = new MutationObserver(() => {
-    const section = stage.firstElementChild as HTMLElement | null;
-    if (
-      section &&
-      deck.slides[Number(section.dataset.index)]?.gpu === undefined &&
-      section.querySelector("canvas")
-    ) {
-      promote();
-    }
-  });
-  canvasWatch.observe(stage, { childList: true, subtree: true });
 
   // Without hit testing, links inside the capture canvas would turn the page; open them by hand.
   const onLinkClick = (e: MouseEvent) => {
@@ -357,7 +334,6 @@ export async function attachTransitions(
       destroyed = true;
       stage.removeEventListener("scroll", onScroll, true);
       cancelAnimationFrame(pumpRaf);
-      canvasWatch.disconnect();
       deck.el.removeEventListener("click", onLinkClick, true);
       for (const t of KICK_EVENTS) {
         stage.removeEventListener(t, kick, true);

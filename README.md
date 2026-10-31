@@ -16,7 +16,7 @@ $ npm i -g @fand/glide
 Requirements:
 
 - Node.js 20+ for the CLI.
-- Browser: GPU transitions need Chrome with `chrome://flags/#canvas-draw-element` enabled. Other browsers use a slower fallback; `--no-gpu` turns transitions off.
+- Browser: GPU transitions need Chrome 156+ with `chrome://flags/#canvas-draw-element` enabled (Chrome 159 also hit-tests slide content; on 156 enable `chrome://flags/#enable-experimental-web-platform-features` for that). Other browsers use a slower fallback; `--no-gpu` turns transitions off.
 
 ## Usage
 
@@ -141,9 +141,10 @@ Transitions work on a capture of the slide. glide re-captures every frame while 
 Some content cannot be captured. glide then shows the slide as plain DOM above the GPU stage, with no transition in or out (a plain cut):
 
 - cross-origin iframes (YouTube, ...): never captured;
-- `<canvas>` (2D, WebGL, p5.js, three.js): HTML-in-Canvas draws a nested canvas at the wrong size, so canvas slides are plain DOM. A canvas that a script adds later moves the slide out of the stage when it appears;
-- without HTML-in-Canvas (the fallback): also video, iframes, GIFs, SMIL, scripts and interactive content, since dom-to-canvas cannot draw them or loses their state (typed text, scroll position);
-- if the browser does not send clicks into HTML-in-Canvas (Chrome without `chrome://flags/#enable-experimental-web-platform-features`): slides with form controls, iframes, audio, scripts, `[onclick]` or `[data-glide-interactive]`. Links still work. Hover styles need hit testing too, so mark hover targets with `data-glide-interactive`.
+- without HTML-in-Canvas (the fallback): also video, canvases, iframes, GIFs, SMIL, scripts and interactive content, since dom-to-canvas cannot draw them or loses their state (typed text, scroll position);
+- if the browser does not send clicks into HTML-in-Canvas (Chrome 156 without `chrome://flags/#enable-experimental-web-platform-features`; Chrome 159 hit-tests without it): slides with form controls, iframes, audio, `[onclick]` or `[data-glide-interactive]`. Links still work. Hover and pointer tracking need hit testing too: a canvas that follows the pointer stays in the stage but does not see the pointer there, so mark it `data-glide-interactive` to show it as plain DOM.
+
+Canvases (2D, WebGL, p5.js, three.js) stay in the GPU stage. Chrome draws a nested canvas at the wrong size or clips it; vfx-js detects that and redraws each canvas over the capture at its layout size. Elements stacked above a canvas are hidden by that redraw.
 
 Force it either way with `<!-- gpu: false -->` (plain DOM) or `<!-- gpu: true -->` (always capture).
 

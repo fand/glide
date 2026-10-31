@@ -87,7 +87,7 @@ This deck tries each kind of content and notes how it fares in three modes:
   Glide.onUnmount(() => inst.remove());
 </script>
 
-<p class="result">HIC ⚠️ plain DOM once the canvas appears (a nested canvas is captured at the wrong size) · fallback ⚠️ plain DOM · --no-gpu ✅ · loop stops on unmount in all modes</p>
+<p class="result">HIC ✅ in the GPU stage at the right size, transitions show it (vfx-js redraws nested canvases) · fallback ⚠️ plain DOM · --no-gpu ✅ · loop stops on unmount in all modes</p>
 
 ---
 
@@ -140,7 +140,7 @@ This deck tries each kind of content and notes how it fares in three modes:
   });
 </script>
 
-<p class="result">HIC ⚠️ plain DOM (canvas captured at the wrong size) · fallback ⚠️ plain DOM · --no-gpu ✅ · loop stops and context is released on unmount</p>
+<p class="result">HIC ✅ in the GPU stage at the right size, transitions show it · fallback ⚠️ plain DOM · --no-gpu ✅ · loop stops and context is released on unmount</p>
 
 ---
 
@@ -175,7 +175,7 @@ This deck tries each kind of content and notes how it fares in three modes:
   Glide.onUnmount(() => cancelAnimationFrame(raf));
 </script>
 
-<p class="result">HIC ⚠️ plain DOM (canvas) · fallback ⚠️ plain DOM · --no-gpu ✅ · clicks on the canvas do not turn the page</p>
+<p class="result">HIC ✅ drawn and follows the pointer (Chrome 156 without hit testing: ⚠️ drawn, but the pointer does not reach it) · fallback ⚠️ plain DOM · --no-gpu ✅ · clicks on the canvas do not turn the page</p>
 
 ---
 
@@ -209,7 +209,7 @@ This deck tries each kind of content and notes how it fares in three modes:
   btn.addEventListener("click", () => { btn.textContent = `clicked ${++n} times`; });
 </script>
 
-<p class="result">HIC ✅ typing, slider drag and button work, keys stay in the control (needs Chrome's experimental web platform features; without them ⚠️ plain DOM) · fallback ⚠️ plain DOM · --no-gpu ✅</p>
+<p class="result">HIC ✅ typing, slider drag and button work, keys stay in the control (Chrome 156 needs experimental web platform features for clicks; without them ⚠️ plain DOM) · fallback ⚠️ plain DOM · --no-gpu ✅</p>
 
 ---
 
@@ -228,7 +228,7 @@ This deck tries each kind of content and notes how it fares in three modes:
   <div class="hover-me" data-glide-interactive>hover me</div>
 </div>
 
-<p class="result">HIC ✅ animation and hover (hover needs hit testing; else ⚠️ plain DOM) · fallback ⚠️ plain DOM · --no-gpu ✅</p>
+<p class="result">HIC ✅ animation and hover (Chrome 156 without hit testing: ⚠️ plain DOM) · fallback ⚠️ plain DOM · --no-gpu ✅</p>
 
 ---
 
@@ -270,7 +270,7 @@ This deck tries each kind of content and notes how it fares in three modes:
   s.querySelector("#play").addEventListener("click", () => { a.currentTime = 0; a.play(); });
 </script>
 
-<p class="result">HIC ✅ controls show, play from script works (hit testing needed; else ⚠️ plain DOM) · fallback ⚠️ plain DOM · --no-gpu ✅</p>
+<p class="result">HIC ✅ controls show, play from script works (Chrome 156 without hit testing: ⚠️ plain DOM) · fallback ⚠️ plain DOM · --no-gpu ✅</p>
 
 ---
 
@@ -280,7 +280,7 @@ This deck tries each kind of content and notes how it fares in three modes:
 
 <iframe class="center" src="demo2-frame.html" width="640" height="300" style="border: 0; border-radius: 8px"></iframe>
 
-<p class="result">HIC ✅ captured with its animation; its button works (hit testing needed; else ⚠️ plain DOM) · fallback ⚠️ plain DOM · --no-gpu ✅</p>
+<p class="result">HIC ✅ captured with its animation; its button works (Chrome 156 without hit testing: ⚠️ plain DOM) · fallback ⚠️ plain DOM · --no-gpu ✅</p>
 
 ---
 
@@ -337,7 +337,7 @@ A [link to glide](https://github.com/fand/glide) opens in this tab.
   }
 </script>
 
-<p class="result">HIC ✅ the clock ticks (script; hit testing needed, else ⚠️ plain DOM) · fallback ⚠️ plain DOM · --no-gpu ✅</p>
+<p class="result">HIC ✅ the clock ticks · fallback ⚠️ plain DOM · --no-gpu ✅</p>
 
 ---
 
@@ -372,29 +372,29 @@ A [link to glide](https://github.com/fand/glide) opens in this tab.
   });
 </script>
 
-<p class="result">HIC ⚠️ plain DOM (canvas) · fallback ⚠️ plain DOM · --no-gpu ✅ · loop and context released on unmount</p>
+<p class="result">HIC ✅ in the GPU stage at the right size, transitions show it · fallback ⚠️ plain DOM · --no-gpu ✅ · loop and context released on unmount</p>
 
 ---
 
 ## Summary
 
-<p class="result">HIC = Chrome with HTML-in-Canvas and experimental web platform features (hit testing). "no hit" = HTML-in-Canvas only. "plain" = shown as plain DOM above the GPU stage: works, but the transition into and out of it is a plain cut.</p>
+<p class="result">HIC with <code>--enable-blink-features=CanvasDrawElement</code>. Chrome 156 sends clicks into the GPU stage only with experimental web platform features ("+hit"); Chrome 159 does without. "plain" = shown as plain DOM above the GPU stage: works, but the transition into and out of it is a cut.</p>
 
-| Content | HIC | HIC, no hit | fallback | --no-gpu |
-| --- | --- | --- | --- | --- |
-| image | ✅ | ✅ | ✅ | ✅ |
-| video | ✅ | ✅ | ⚠️ plain | ✅ |
-| GIF | ✅ | ✅ | ⚠️ plain | ✅ |
-| YouTube 🌐 | ⚠️ plain | ⚠️ plain | ⚠️ plain | ✅ |
-| p5.js 🌐 | ⚠️ plain | ⚠️ plain | ⚠️ plain | ✅ |
-| WebGL2 | ⚠️ plain | ⚠️ plain | ⚠️ plain | ✅ |
-| 2D canvas + pointer | ⚠️ plain | ⚠️ plain | ⚠️ plain | ✅ |
-| form controls | ✅ | ⚠️ plain | ⚠️ plain | ✅ |
-| CSS animation + hover | ✅ | ⚠️ plain | ⚠️ plain | ✅ |
-| SVG (SMIL, CSS) | ✅ | ✅ | ⚠️ plain | ✅ |
-| audio | ✅ | ⚠️ plain | ⚠️ plain | ✅ |
-| same-origin iframe | ✅ | ⚠️ plain | ⚠️ plain | ✅ |
-| details, links, selection | ✅ | ⚠️ plain | ⚠️ plain | ✅ |
-| scroll box | ✅ | ⚠️ plain | ⚠️ plain | ✅ |
-| Web Component | ✅ | ⚠️ plain | ⚠️ plain | ✅ |
-| three.js 🌐 | ⚠️ plain | ⚠️ plain | ⚠️ plain | ✅ |
+| Content | Chrome 159 | 156 +hit | 156 | fallback | --no-gpu |
+| --- | --- | --- | --- | --- | --- |
+| image | ✅ | ✅ | ✅ | ✅ | ✅ |
+| video | ✅ | ✅ | ✅ | ⚠️ plain | ✅ |
+| GIF | ✅ | ✅ | ✅ | ⚠️ plain | ✅ |
+| YouTube 🌐 | ⚠️ plain | ⚠️ plain | ⚠️ plain | ⚠️ plain | ✅ |
+| p5.js 🌐 | ✅ | ✅ | ✅ | ⚠️ plain | ✅ |
+| WebGL2 | ✅ | ✅ | ✅ | ⚠️ plain | ✅ |
+| 2D canvas + pointer | ✅ | ✅ | ⚠️ no pointer | ⚠️ plain | ✅ |
+| form controls | ✅ | ✅ | ⚠️ plain | ⚠️ plain | ✅ |
+| CSS animation + hover | ✅ | ✅ | ⚠️ plain | ⚠️ plain | ✅ |
+| SVG (SMIL, CSS) | ✅ | ✅ | ✅ | ⚠️ plain | ✅ |
+| audio | ✅ | ✅ | ⚠️ plain | ⚠️ plain | ✅ |
+| same-origin iframe | ✅ | ✅ | ⚠️ plain | ⚠️ plain | ✅ |
+| details, links, selection | ✅ | ✅ | ⚠️ plain | ⚠️ plain | ✅ |
+| scroll box | ✅ | ✅ | ⚠️ plain | ⚠️ plain | ✅ |
+| Web Component | ✅ | ✅ | ✅ | ⚠️ plain | ✅ |
+| three.js 🌐 | ✅ | ✅ | ✅ | ⚠️ plain | ✅ |
