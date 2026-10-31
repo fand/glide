@@ -176,10 +176,10 @@ If a shader fails to compile, glide logs the error to the console and cuts strai
 ## Development
 
 ```
-$ npm install
-$ npm run dev        # runtime dev server with examples/demo.md
-$ npm run build
-$ npm test
+$ pnpm install
+$ pnpm dev            # runtime dev server with examples/demo.md
+$ pnpm build
+$ pnpm test
 ```
 
 ## LICENSE
