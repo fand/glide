@@ -140,6 +140,20 @@ function fitCode(section: HTMLElement): void {
   }
 }
 
+const HELP_HTML = `<div class="panel">
+<h2>Keys</h2>
+<dl>
+<dt>→ l Space PageDown</dt><dd>Next slide</dd>
+<dt>← h PageUp</dt><dd>Previous slide</dd>
+<dt>Home / End</dt><dd>First / last slide</dd>
+<dt>↓ j / ↑ k</dt><dd>Scroll a tall slide</dd>
+<dt>f</dt><dd>Fullscreen</dd>
+<dt>?</dt><dd>This help</dd>
+<dt>Esc</dt><dd>Leave a focused control, exit fullscreen</dd>
+</dl>
+<p>Click or tap the left / right side to go back / forward. Press any key to close.</p>
+</div>`;
+
 /** Clicks on these do not turn the page. */
 const INTERACTIVE = [
   "a",
@@ -160,6 +174,39 @@ const INTERACTIVE = [
   "[tabindex]",
   "[data-glide-interactive]",
 ].join(", ");
+
+/** Minimum horizontal travel (CSS px) of a touch swipe. */
+const SWIPE_MIN = 50;
+
+function isCaptureCanvas(el: Element): boolean {
+  return (
+    el.tagName === "CANVAS" &&
+    (el.hasAttribute("layoutsubtree") || el.getAttribute("content") === "drawable")
+  );
+}
+
+/**
+ * Whether a click or swipe at (x, y) on `t` belongs to the slide content.
+ * The capture canvas that wraps the stage is not content. Without hit
+ * testing every event lands on it, so look for content under the point.
+ */
+function isInteractive(t: EventTarget | null, x: number, y: number): boolean {
+  if (!(t instanceof Element)) {
+    return false;
+  }
+  if (isCaptureCanvas(t)) {
+    for (const el of t.querySelectorAll(INTERACTIVE)) {
+      for (const r of el.getClientRects()) {
+        if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+  const hit = t.closest(INTERACTIVE);
+  return hit !== null && !isCaptureCanvas(hit);
+}
 
 /** Keys that these elements use themselves while focused. */
 function keyBelongsToTarget(t: HTMLElement, key: string): boolean {
@@ -227,7 +274,10 @@ export function run(md: string, opts: RunOpts = {}): Deck {
     overlay.appendChild(header);
   }
   overlay.appendChild(counter);
-  glide.append(stage, domLayer, overlay);
+  const help = el("div", { id: "glide-help", role: "dialog", "aria-label": "Keyboard shortcuts" });
+  help.innerHTML = HELP_HTML;
+  help.hidden = true;
+  glide.append(stage, domLayer, overlay, help);
   root.appendChild(glide);
 
   const preloaded = new Set<string>();
@@ -268,6 +318,7 @@ export function run(md: string, opts: RunOpts = {}): Deck {
   /** The overlay follows the current slide's theme once its swap has finished. */
   function applyOverlayTheme(): void {
     overlay.className = `theme-${slides[current]?.theme ?? deckTheme}`;
+    help.className = overlay.className;
   }
 
   function mountSlide(i: number): HTMLElement {
@@ -372,7 +423,30 @@ export function run(md: string, opts: RunOpts = {}): Deck {
   const next = () => goto(current + 1);
   const prev = () => goto(current - 1);
 
+  function toggleHelp(open = help.hidden): void {
+    help.className = overlay.className;
+    help.hidden = !open;
+  }
+
+  function toggleFullscreen(): void {
+    if (document.fullscreenElement) {
+      void document.exitFullscreen();
+    } else {
+      void glide.requestFullscreen?.().catch((err: unknown) => {
+        console.warn("glide: fullscreen failed:", err);
+      });
+    }
+  }
+
   function onKey(e: KeyboardEvent): void {
+    if (!help.hidden) {
+      // Any key closes the help; it must not turn the page.
+      if (!["Shift", "Control", "Alt", "Meta"].includes(e.key)) {
+        toggleHelp(false);
+        e.preventDefault();
+      }
+      return;
+    }
     if (e.metaKey || e.ctrlKey || e.altKey || e.defaultPrevented) {
       return;
     }
@@ -411,6 +485,12 @@ export function run(md: string, opts: RunOpts = {}): Deck {
       case "k":
         scrollSlide(-1);
         break;
+      case "f":
+        toggleFullscreen();
+        break;
+      case "?":
+        toggleHelp(true);
+        break;
       default:
         return;
     }
@@ -418,23 +498,62 @@ export function run(md: string, opts: RunOpts = {}): Deck {
   }
 
   // A drag (text selection, slider) ends with a click; it must not turn the page.
-  let downAt: [number, number] | null = null;
+  // Touch: a horizontal swipe turns the page; vertical moves scroll natively
+  // (`touch-action: pan-y` on #glide).
+  let down: { x: number; y: number; touch: boolean; target: EventTarget | null } | null = null;
+  let swiped = false;
   function onPointerDown(e: PointerEvent): void {
-    downAt = [e.clientX, e.clientY];
+    down = { x: e.clientX, y: e.clientY, touch: e.pointerType === "touch", target: e.target };
+    swiped = false;
+  }
+  function onPointerUp(e: PointerEvent): void {
+    if (!down?.touch || e.pointerType !== "touch" || isInteractive(down.target, down.x, down.y)) {
+      return;
+    }
+    const dx = e.clientX - down.x;
+    const dy = e.clientY - down.y;
+    if (Math.abs(dx) >= SWIPE_MIN && Math.abs(dx) > Math.abs(dy) * 1.5) {
+      swiped = true;
+      if (dx < 0) {
+        next();
+      } else {
+        prev();
+      }
+    }
+  }
+  function onPointerCancel(): void {
+    down = null;
+  }
+  // Without hit testing, a vertical touch drag lands on the capture canvas,
+  // which does not scroll; scroll the slide by hand.
+  let touchY: number | null = null;
+  function onTouchMove(e: TouchEvent): void {
+    const y = e.touches[0]?.clientY;
+    if (y === undefined || !mounted || !(e.target instanceof Element) || !isCaptureCanvas(e.target)) {
+      return;
+    }
+    if (touchY !== null) {
+      mounted.scrollBy({ top: touchY - y });
+    }
+    touchY = y;
+  }
+  function onTouchEnd(): void {
+    touchY = null;
   }
 
   function onClick(e: MouseEvent): void {
-    if (e.button !== 0) {
+    if (e.button !== 0 || swiped) {
+      swiped = false;
       return;
     }
-    if (downAt && Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]) > 6) {
+    const slop = down?.touch ? 10 : 6;
+    if (down && Math.hypot(e.clientX - down.x, e.clientY - down.y) > slop) {
       return;
     }
     if (String(window.getSelection() ?? "") !== "") {
       return;
     }
-    const t = e.target as HTMLElement | null;
-    if (t?.closest(INTERACTIVE)) {
+    if (isInteractive(e.target, e.clientX, e.clientY)) {
       return;
     }
     const x = e.clientX / window.innerWidth;
@@ -455,7 +574,16 @@ export function run(md: string, opts: RunOpts = {}): Deck {
   window.addEventListener("keydown", onKey);
   window.addEventListener("resize", onResize);
   glide.addEventListener("pointerdown", onPointerDown);
+  glide.addEventListener("pointerup", onPointerUp);
+  glide.addEventListener("pointercancel", onPointerCancel);
+  glide.addEventListener("touchmove", onTouchMove, { passive: true });
+  glide.addEventListener("touchend", onTouchEnd);
+  glide.addEventListener("touchcancel", onTouchEnd);
   glide.addEventListener("click", onClick);
+  help.addEventListener("click", (e) => {
+    e.stopPropagation();
+    toggleHelp(false);
+  });
   glide.addEventListener("wheel", onWheel, { passive: false });
   if (useHash) {
     window.addEventListener("hashchange", onHashChange);

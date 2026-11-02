@@ -105,7 +105,10 @@ header:
 - `Home` / `End`
 - Scroll a slide taller than the screen: `↓` `j` / `↑` `k`, or the mouse wheel
 - `#N` in the URL opens slide N
-- Clicks on links, form controls, `canvas`, `video`, `audio`, `iframe`, `summary`, `label`, elements with `tabindex`, and anything inside `[data-glide-interactive]` do not turn the page. Neither does a drag (text selection, slider).
+- Touch: swipe left / right to go forward / back; tap the right / left side like a click. A vertical swipe scrolls a tall slide. A touch that moves more than 10 px is not a tap.
+- `f`: fullscreen (`Esc` exits)
+- `?`: show the keys; any key or click closes it
+- Clicks on links, form controls, `canvas`, `video`, `audio`, `iframe`, `summary`, `label`, elements with `tabindex`, and anything inside `[data-glide-interactive]` do not turn the page, by click, tap or swipe. Neither does a drag (text selection, slider).
 - Keys go to a focused text field, slider or select, and `Space` / `Enter` to a focused button or link. Press `Esc` to give the keys back to the deck. Inside `[data-glide-interactive]`, the deck ignores all keys.
 
 ## Interactive slides
@@ -224,6 +227,10 @@ $ pnpm dev            # Vite dev server on src/runtime (no CLI)
 $ pnpm build
 $ pnpm test
 ```
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md). Release steps: [RELEASING.md](RELEASING.md).
 
 ## LICENSE
 
