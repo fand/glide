@@ -38,7 +38,7 @@ const INTERACTIVE =
  * - when the browser does not hit-test inside the capture canvas, or in the
  *   fallback, anything interactive.
  */
-export function needsPlainDom(html: string, hic: boolean, hitTest: boolean): boolean {
+function needsPlainDom(html: string, hic: boolean, hitTest: boolean): boolean {
   const tpl = document.createElement("template");
   tpl.innerHTML = html;
   const doc = tpl.content;
