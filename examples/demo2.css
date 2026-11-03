@@ -1,0 +1,7 @@
+/* Shared styles for demo2.md (loaded with the `css:` frontmatter key). */
+.result { font-size: 0.6rem; color: var(--muted); margin-top: 1rem; }
+.tests { font-size: 0.7rem; color: var(--muted); }
+.row { display: flex; gap: 2rem; align-items: center; justify-content: center; }
+.slide table { font-size: 0.55rem; margin: 0 auto; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.slide table th, .slide table td { padding: 0.05rem 0.6rem; line-height: 1.3; }

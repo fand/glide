@@ -1,0 +1,19 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      html, body { margin: 0; height: 100%; font: 20px sans-serif; background: #313244; color: #cdd6f4; }
+      body { display: grid; place-items: center; }
+      .dot { width: 40px; height: 40px; border-radius: 50%; background: #f38ba8; animation: move 1.5s ease-in-out infinite alternate; }
+      @keyframes move { from { transform: translateX(-120px); } to { transform: translateX(120px); } }
+    </style>
+  </head>
+  <body>
+    <div>
+      <p>same-origin iframe: <span id="n">0</span></p>
+      <div class="dot"></div>
+      <button onclick="document.getElementById('n').textContent++">+1</button>
+    </div>
+  </body>
+</html>

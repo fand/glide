@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "allowImportingTsExtensions": true,
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "rootDir": "src/runtime",
+    "outDir": "dist/types"
+  },
+  "include": ["src/runtime"]
+}
