@@ -141,15 +141,15 @@ Find your slide and clean up when it leaves:
 
 Transitions work on a capture of the slide. glide re-captures every frame while the slide has `video`, `canvas`, `iframe`, a GIF, SMIL, a running CSS animation, or right after user input. Each capture costs one full-screen texture upload per frame. Set `<!-- live: false -->` to stop that, or `<!-- live -->` to force it.
 
-Some content cannot be captured. glide then shows the slide as plain DOM above the GPU stage, with no transition in or out (a plain cut):
+Some content cannot be shown live in the GPU stage. glide then **parks** the slide: it takes part in transitions like any other slide, and while idle it is moved out of the stage into a plain-DOM layer above it, where it plays and takes input normally. Before the next transition it moves back, one capture lands, and the transition starts from it. The move keeps the element itself (`moveBefore()`), so iframes do not reload, and video, typed text and scroll positions carry over. Parked slides are not re-captured while idle.
 
-- cross-origin iframes (YouTube, ...): never captured;
-- without HTML-in-Canvas (the fallback): also video, canvases, iframes, GIFs, SMIL, scripts and interactive content, since dom-to-canvas cannot draw them or loses their state (typed text, scroll position);
-- if the browser does not send clicks into HTML-in-Canvas (Chrome 156 without `chrome://flags/#enable-experimental-web-platform-features`; Chrome 159 hit-tests without it): slides with form controls, iframes, audio, `[onclick]` or `[data-glide-interactive]`. Links still work. Hover and pointer tracking need hit testing too: a canvas that follows the pointer stays in the stage but does not see the pointer there, so mark it `data-glide-interactive` to show it as plain DOM.
+- cross-origin iframes (YouTube, ...): captured blank, so they show black during the transition;
+- without HTML-in-Canvas (the fallback): also video, canvases, iframes, GIFs, SMIL, scripts and interactive content, since dom-to-canvas cannot draw them or loses their state (typed text, scroll position). Their transitions use the dom-to-canvas capture, so those parts may look blank mid-transition;
+- if the browser does not send clicks into HTML-in-Canvas (Chrome 156 without `chrome://flags/#enable-experimental-web-platform-features`; Chrome 159 hit-tests without it): slides with form controls, iframes, audio, `[onclick]` or `[data-glide-interactive]`. Links still work. Hover and pointer tracking need hit testing too: a canvas that follows the pointer stays in the stage but does not see the pointer there, so mark it `data-glide-interactive` to park it.
 
 Canvases (2D, WebGL, p5.js, three.js) stay in the GPU stage. Chrome draws a nested canvas at the wrong size or clips it; vfx-js detects that and redraws each canvas over the capture at its layout size. Elements stacked above a canvas are hidden by that redraw.
 
-Force it either way with `<!-- gpu: false -->` (plain DOM) or `<!-- gpu: true -->` (always capture).
+Override per slide: `<!-- gpu: false -->` keeps the slide in the plain-DOM layer the whole time (transitions into and out of it are cuts); `<!-- gpu: true -->` keeps it in the GPU stage even while idle.
 
 ## Transitions
 

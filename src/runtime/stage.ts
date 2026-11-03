@@ -26,6 +26,31 @@ function wantsFrames(section: HTMLElement, deck: Deck, hic: boolean): boolean {
   return section.getAnimations({ subtree: true }).some((a) => a.playState === "running");
 }
 
+function isCrossOrigin(src: string | null): boolean {
+  if (!src) {
+    return false;
+  }
+  try {
+    return new URL(src, document.baseURI).origin !== location.origin;
+  } catch {
+    return true;
+  }
+}
+
+/** Move `node` to the end of `parent`, keeping iframe, video and scroll state when the browser can. */
+function moveNode(parent: Element, node: Element): void {
+  const p = parent as Element & { moveBefore?: (node: Node, child: Node | null) => void };
+  if (typeof p.moveBefore === "function") {
+    try {
+      p.moveBefore(node, null);
+      return;
+    } catch {
+      // Fall through: a plain move reloads iframes and resets scroll.
+    }
+  }
+  parent.appendChild(node);
+}
+
 /** Content the user clicks, types into or drags. */
 const INTERACTIVE =
   "input, button, select, textarea, details, label, iframe, audio, video[controls], embed, object, [contenteditable], [data-glide-interactive], [onclick]";
@@ -43,12 +68,7 @@ function needsPlainDom(html: string, hic: boolean, hitTest: boolean): boolean {
   tpl.innerHTML = html;
   const doc = tpl.content;
   for (const f of doc.querySelectorAll("iframe[src]")) {
-    const src = f.getAttribute("src") ?? "";
-    try {
-      if (new URL(src, document.baseURI).origin !== location.origin) {
-        return true;
-      }
-    } catch {
+    if (isCrossOrigin(f.getAttribute("src"))) {
       return true;
     }
   }
@@ -158,17 +178,49 @@ export async function attachTransitions(
     );
   }
 
-  // Slides the stage cannot capture mount as plain DOM above it instead.
-  const plain = deck.slides.map((s) =>
-    s.gpu === undefined ? needsPlainDom(s.html + (s.htmlRight ?? ""), hic, hitTest) : !s.gpu,
+  // `gpu: false` slides always live in the plain-DOM layer (cut transitions).
+  // Slides the stage cannot show live (cross-origin iframes, interactive
+  // content without hit testing, ...) are "parked": they sit in the GPU
+  // stage while a transition runs and move to the plain-DOM layer when idle.
+  const isPlain = (i: number) => deck.slides[i]?.gpu === false;
+  const parks = deck.slides.map(
+    (s) => s.gpu === undefined && needsPlainDom(s.html + (s.htmlRight ?? ""), hic, hitTest),
   );
-  const isPlain = (i: number) => plain[i] ?? false;
+  const parksIdle = (i: number) => parks[i] ?? false;
   deck.setPlainDom(isPlain);
-  // The first slide mounted before the stage existed; move it if needed.
   const first = stage.firstElementChild;
   if (first && isPlain(deck.current)) {
     deck.domLayer.replaceChildren(first);
     deck.domLayer.classList.add("active");
+  }
+
+  /**
+   * Move the idle slide to the plain-DOM layer. The GPU output keeps showing
+   * its last frame underneath, so moving it back later does not flash.
+   */
+  async function park(id: number): Promise<void> {
+    const section = stage.firstElementChild;
+    if (!section) {
+      return;
+    }
+    await effect.snapshot();
+    if (id !== seq || stage.firstElementChild !== section) {
+      return;
+    }
+    moveNode(deck.domLayer, section);
+    deck.domLayer.classList.add("active");
+  }
+
+  /** Bring a parked slide back into the GPU stage and wait for its capture. */
+  async function unpark(): Promise<void> {
+    const section = deck.domLayer.firstElementChild;
+    if (!section || !parksIdle(Number((section as HTMLElement).dataset.index))) {
+      return;
+    }
+    moveNode(stage, section);
+    deck.domLayer.classList.remove("active");
+    onMounted();
+    await recapture();
   }
 
   // Without hit testing, links inside the capture canvas would turn the page; open them by hand.
@@ -231,6 +283,12 @@ export async function attachTransitions(
     if (!section) {
       return;
     }
+    // A cross-origin iframe is captured blank; show black there, not the slide behind.
+    for (const f of section.querySelectorAll("iframe")) {
+      if (isCrossOrigin(f.getAttribute("src"))) {
+        f.dataset.glideXo = "";
+      }
+    }
     for (const m of section.querySelectorAll<HTMLImageElement | HTMLVideoElement>("img, video")) {
       const ready = m instanceof HTMLImageElement ? m.complete : m.readyState >= 2;
       if (!ready) {
@@ -282,18 +340,25 @@ export async function attachTransitions(
     const owner = ctx.direction === 1 ? entering : leaving;
     const resolved = resolveTransition(owner.transition, local);
 
-    // Plain-DOM slides are not captured, so there is nothing to animate.
+    // `gpu: false` slides are never captured, so there is nothing to animate.
     if (!resolved || owner.duration <= 0 || isPlain(ctx.from) || isPlain(ctx.to)) {
       endActive();
       effect.cancel();
       ctx.mount();
       onMounted();
       await recapture();
+      if (id === seq && parksIdle(ctx.to)) {
+        await park(id);
+      }
       return;
     }
 
     const { def, uniforms } = resolved;
     const fx = await ensureFx(def);
+    if (id !== seq) {
+      return;
+    }
+    await unpark();
     if (id !== seq) {
       return;
     }
@@ -327,7 +392,13 @@ export async function attachTransitions(
       onFrame: def.onFrame ? (t, x, dt) => def.onFrame?.(t, x, dt, fx) : undefined,
       onEnd: () => endActive(id),
     });
+    if (id === seq && parksIdle(ctx.to)) {
+      await park(id);
+    }
   });
+  if (parksIdle(deck.current)) {
+    void recapture().then(() => park(seq));
+  }
 
   return {
     destroy() {

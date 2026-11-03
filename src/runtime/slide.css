@@ -277,3 +277,8 @@ body {
   color: var(--muted);
   font-size: 0.6rem;
 }
+
+/* Cross-origin iframes are captured blank during transitions; make that black. */
+.slide iframe[data-glide-xo] {
+  background: #000;
+}
