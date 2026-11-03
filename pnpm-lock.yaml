@@ -167,11 +167,11 @@ importers:
   .:
     dependencies:
       '@vfx-js/core':
-        specifier: ^1.1.0
-        version: 1.1.0
+        specifier: ^1.3.0
+        version: 1.3.0
       '@vfx-js/effects':
-        specifier: 1.3.0
-        version: 1.3.0(@vfx-js/core@1.1.0)
+        specifier: ^1.4.1
+        version: 1.4.1(@vfx-js/core@1.3.0)
       chokidar:
         specifier: ^4.0.3
         version: 4.0.3
@@ -660,13 +660,13 @@ packages:
   '@types/node@22.20.5':
     resolution: {integrity: sha512-U2+DNr+wSjpsTS/wZGYHq7GcwfuSmKiKvoPvK22zwTlRhU91yOniN4qRR5KhIjvif7ysw/dz/hKmfDH0Ris4aA==}
 
-  '@vfx-js/core@1.1.0':
-    resolution: {integrity: sha512-sFBwUWzYPXNPGFGUkrhwOV6TBNkctWALGxYCMj2Ph5VSp+SRm0WT/EdyMhrrgG3ZleXkw27qijzJmyNf37TP/g==}
+  '@vfx-js/core@1.3.0':
+    resolution: {integrity: sha512-7TdY/hhlmOyZYSXRJFvte0okbNcfWc2C0VdQ8nRD2xhJkxIN7ic2gLfgcpsiMFUDVsdNVt9reu7AZuDu8NQ3zw==}
 
-  '@vfx-js/effects@1.3.0':
-    resolution: {integrity: sha512-cd3qA9eUVubLguTw/iaUzF5wZoz4StHumCYFFDGJvp6AEcLzvb9gPaFqJ2haqBx9aT7ghh4fz1VXJLxyPYw+wg==}
+  '@vfx-js/effects@1.4.1':
+    resolution: {integrity: sha512-iDBbVFCNFiagd08F+oIEnHAUl+FWB5B8G0hlAz+Sl02FMIYkAvKijBXz+7f8L8P1CTt+AZZ/upmULqR9QUStGA==}
     peerDependencies:
-      '@vfx-js/core': '>=1.1.0'
+      '@vfx-js/core': '>=1.3.0'
 
   chokidar@4.0.3:
     resolution: {integrity: sha512-Qgzu8kfBvo+cA4962jnP1KkS6Dop5NS6g7R5LFYJr4b8Ub94PPQXUksCw9PvXoeXPRRddRNC5C1JQUR2SMGtnA==}
@@ -1028,11 +1028,11 @@ snapshots:
     dependencies:
       undici-types: 6.21.0
 
-  '@vfx-js/core@1.1.0': {}
+  '@vfx-js/core@1.3.0': {}
 
-  '@vfx-js/effects@1.3.0(@vfx-js/core@1.1.0)':
+  '@vfx-js/effects@1.4.1(@vfx-js/core@1.3.0)':
     dependencies:
-      '@vfx-js/core': 1.1.0
+      '@vfx-js/core': 1.3.0
 
   chokidar@4.0.3:
     dependencies:
