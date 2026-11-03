@@ -2,6 +2,7 @@ import { VFX, supportsHtmlInCanvas, type Effect } from "@vfx-js/core";
 import type { Deck } from "./deck.ts";
 import { TransitionEffect } from "./transitions/base.ts";
 import { buildFrag } from "./transitions/glsl.ts";
+import { staticClone } from "./clone.ts";
 import {
   resolveTransition,
   type TransitionDef,
@@ -217,14 +218,26 @@ export async function attachTransitions(
     deck.domLayer.classList.add("active");
   }
 
-  /** Bring a parked slide back into the GPU stage and wait for its capture. */
+  /**
+   * Bring a parked slide back into the GPU stage and wait for its capture.
+   * Until the next snapshot is on screen the GPU output still shows the frame
+   * held at parking time, so a still copy of the slide covers it in the
+   * plain-DOM layer. The next mount clears that layer.
+   */
   async function unpark(): Promise<void> {
-    const section = deck.domLayer.firstElementChild;
-    if (!section || !parksIdle(Number((section as HTMLElement).dataset.index))) {
+    const parked = deck.domLayer.querySelector<HTMLElement>(":scope > section:not([data-glide-clone])");
+    if (!parked || !parksIdle(Number(parked.dataset.index))) {
       return;
     }
-    moveNode(stage, section);
-    deck.domLayer.classList.remove("active");
+    // In a rAF after the page's own, so WebGL canvases still hold their frame.
+    await nextFrame();
+    if (parked.parentElement !== deck.domLayer) {
+      return;
+    }
+    const copy = staticClone(parked, isCrossOrigin);
+    deck.domLayer.appendChild(copy.el);
+    copy.restoreScroll();
+    moveNode(stage, parked);
     onMounted();
     await recapture();
   }
