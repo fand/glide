@@ -177,7 +177,7 @@ This deck tries each kind of content and notes how it fares in three modes:
   Glide.onUnmount(() => cancelAnimationFrame(raf));
 </script>
 
-<p class="result">HIC ✅ drawn and follows the pointer (Chrome 156 without hit testing: ⚠️ drawn, but the pointer does not reach it) · fallback ⚠️ parked (blank or approximate mid-transition) · --no-gpu ✅ · clicks on the canvas do not turn the page</p>
+<p class="result">HIC ✅ drawn and follows the pointer (Chrome 156 without hit testing: parked, so the pointer reaches it) · fallback ⚠️ parked (blank or approximate mid-transition) · --no-gpu ✅ · clicks on the canvas do not turn the page</p>
 
 ---
 
@@ -388,9 +388,9 @@ A [link to glide](https://github.com/fand/glide) opens in this tab.
 | video | ✅ | ✅ | ✅ | ⚠️ parked | ✅ |
 | GIF | ✅ | ✅ | ✅ | ⚠️ parked | ✅ |
 | YouTube 🌐 | ✅ parked | ✅ parked | ✅ parked | ⚠️ parked | ✅ |
-| p5.js 🌐 | ✅ | ✅ | ✅ | ⚠️ parked | ✅ |
-| WebGL2 | ✅ | ✅ | ✅ | ⚠️ parked | ✅ |
-| 2D canvas + pointer | ✅ | ✅ | ⚠️ no pointer | ⚠️ parked | ✅ |
+| p5.js 🌐 | ✅ | ✅ | ✅ parked | ⚠️ parked | ✅ |
+| WebGL2 | ✅ | ✅ | ✅ parked | ⚠️ parked | ✅ |
+| 2D canvas + pointer | ✅ | ✅ | ✅ parked | ⚠️ parked | ✅ |
 | form controls | ✅ | ✅ | ✅ parked | ⚠️ parked | ✅ |
 | CSS animation + hover | ✅ | ✅ | ✅ parked | ⚠️ parked | ✅ |
 | SVG (SMIL, CSS) | ✅ | ✅ | ✅ | ⚠️ parked | ✅ |
@@ -398,7 +398,7 @@ A [link to glide](https://github.com/fand/glide) opens in this tab.
 | same-origin iframe | ✅ | ✅ | ✅ parked | ⚠️ parked | ✅ |
 | details, links, selection | ✅ | ✅ | ✅ parked | ⚠️ parked | ✅ |
 | scroll box | ✅ | ✅ | ✅ parked | ⚠️ parked | ✅ |
-| Web Component | ✅ | ✅ | ✅ | ⚠️ parked | ✅ |
-| three.js 🌐 | ✅ | ✅ | ✅ | ⚠️ parked | ✅ |
+| Web Component | ✅ | ✅ | ✅ parked | ⚠️ parked | ✅ |
+| three.js 🌐 | ✅ | ✅ | ✅ parked | ⚠️ parked | ✅ |
 
 <p class="result">✅ parked: works and animates. ⚠️ parked in the fallback: works while idle, but dom-to-canvas draws video, canvases, iframes and GIFs blank or frozen during the transition.</p>

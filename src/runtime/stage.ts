@@ -80,6 +80,12 @@ function needsPlainDom(html: string, hic: boolean, hitTest: boolean): boolean {
   ) {
     return true;
   }
+  // Without hit testing, pointer events never reach a canvas or a
+  // script-built element in the stage; we can't tell which ones listen, so
+  // park them all. Parked slides still animate their transitions.
+  if (!hitTest && doc.querySelector("canvas, script")) {
+    return true;
+  }
   // dom-to-canvas also loses typed values, scroll positions and toggles.
   return (!hitTest || !hic) && doc.querySelector(INTERACTIVE) !== null;
 }

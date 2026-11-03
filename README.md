@@ -145,7 +145,7 @@ Some content cannot be shown live in the GPU stage. glide then **parks** the sli
 
 - cross-origin iframes (YouTube, ...): captured blank, so they show black during the transition;
 - without HTML-in-Canvas (the fallback): also video, canvases, iframes, GIFs, SMIL, scripts and interactive content, since dom-to-canvas cannot draw them or loses their state (typed text, scroll position). Their transitions use the dom-to-canvas capture, so those parts may look blank mid-transition;
-- if the browser does not send clicks into HTML-in-Canvas (Chrome 156 without `chrome://flags/#enable-experimental-web-platform-features`; Chrome 159 hit-tests without it): slides with form controls, iframes, audio, `[onclick]` or `[data-glide-interactive]`. Links still work. Hover and pointer tracking need hit testing too: a canvas that follows the pointer stays in the stage but does not see the pointer there, so mark it `data-glide-interactive` to park it.
+- if the browser does not send clicks into HTML-in-Canvas (Chrome 156 without `chrome://flags/#enable-experimental-web-platform-features`; Chrome 159 hit-tests without it): slides with form controls, iframes, audio, `<canvas>`, `<script>`, `[onclick]` or `[data-glide-interactive]`. Canvases and scripts are included because glide can't tell which ones listen for the pointer.
 
 Canvases (2D, WebGL, p5.js, three.js) stay in the GPU stage. Chrome draws a nested canvas at the wrong size or clips it; vfx-js detects that and redraws each canvas over the capture at its layout size. Elements stacked above a canvas are hidden by that redraw.
 
