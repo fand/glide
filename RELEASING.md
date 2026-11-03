@@ -6,7 +6,7 @@
    $ grep vfx-js package.json
    ```
 
-2. Bump `version` in `package.json` (e.g. `2.0.0-alpha.1`, `2.0.0`).
+2. Bump `version` in `package.json` (e.g. `0.1.1`, `0.2.0`, `0.2.0-next.0`).
 3. Move the `Unreleased` notes in `CHANGELOG.md` under the new version and date.
 4. Check the package contents:
 
