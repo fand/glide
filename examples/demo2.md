@@ -1,8 +1,8 @@
 ---
 title: glide demo 2 — every slide is HTML
 css: ./demo2.css
-transition: crosszoom
-duration: 0.5
+transition: pixelsort right
+duration: 5
 ---
 
 <!-- layout: center -->

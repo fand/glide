@@ -5,3 +5,32 @@
 .slide table { font-size: 0.55rem; margin: 0 auto; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .slide table th, .slide table td { padding: 0.05rem 0.6rem; line-height: 1.3; }
+
+/* Full-screen background per slide: two soft glows over the theme bg.
+   Each slide gets its own hue (--h), so transitions show the change. */
+.slide {
+  --h: 260;
+  background:
+    radial-gradient(60% 80% at 15% 20%, hsl(var(--h) 70% 45% / 0.35), transparent 70%),
+    radial-gradient(70% 90% at 90% 90%, hsl(calc(var(--h) + 60) 70% 40% / 0.30), transparent 70%),
+    linear-gradient(160deg, hsl(var(--h) 35% 12%), hsl(calc(var(--h) + 30) 30% 8%));
+}
+.slide[data-index="0"] { --h: 0; }
+.slide[data-index="1"] { --h: 19; }
+.slide[data-index="2"] { --h: 38; }
+.slide[data-index="3"] { --h: 57; }
+.slide[data-index="4"] { --h: 76; }
+.slide[data-index="5"] { --h: 95; }
+.slide[data-index="6"] { --h: 114; }
+.slide[data-index="7"] { --h: 133; }
+.slide[data-index="8"] { --h: 152; }
+.slide[data-index="9"] { --h: 171; }
+.slide[data-index="10"] { --h: 189; }
+.slide[data-index="11"] { --h: 208; }
+.slide[data-index="12"] { --h: 227; }
+.slide[data-index="13"] { --h: 246; }
+.slide[data-index="14"] { --h: 265; }
+.slide[data-index="15"] { --h: 284; }
+.slide[data-index="16"] { --h: 303; }
+.slide[data-index="17"] { --h: 322; }
+.slide[data-index="18"] { --h: 341; }
