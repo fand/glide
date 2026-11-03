@@ -27,6 +27,9 @@ test("all transitions and aliases resolve", (t) => {
     zoom: "zoom",
     zoom_blur: "zoom_blur",
     "zoom-blur": "zoom_blur",
+    crosszoom: "crosszoom",
+    "cross-zoom": "crosszoom",
+    cross_zoom: "crosszoom",
     glitch_slide: "glitch_slide",
     "glitch-slide": "glitch_slide",
     glitch: "glitch",
@@ -38,6 +41,7 @@ test("all transitions and aliases resolve", (t) => {
   }
   assert.deepEqual(transitionNames().sort(), [
     "crossfade",
+    "crosszoom",
     "datamosh",
     "glitch",
     "glitch_slide",

@@ -165,6 +165,7 @@ Set them per deck (frontmatter) or per slide (directive). A slide's transition p
 | `swipe` | `slide` | Slides the new slide in. Arg `left` (default), `right`, `up`, `down` is the way the content moves: `swipe left` moves the old slide out to the left and brings the new one in from the right. |
 | `zoom` | | The old slide shrinks into the center while the new one grows out of it. |
 | `zoom_blur` | `zoom-blur` | Crossfade with a radial blur and RGB split that peaks halfway. |
+| `crosszoom` | `cross-zoom` | Crossfade through a zoom blur toward the center that peaks halfway. |
 | `glitch_slide` | `glitch-slide` | Rows slide sideways with RGB split; the slide swaps halfway. |
 | `glitch` | | Jittery RGB-split offsets; the slide swaps halfway. |
 | `datamosh` | | Hard cut through a datamosh: the old slide's blocks smear into the new one, hold for 25% of `duration`, then heal block by block. Arg: block size in px (default `32`). |
