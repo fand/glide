@@ -1,2 +1,5 @@
 allowBuilds:
   esbuild: true
+# Our own packages: skip pnpm's minimum release age so fresh releases install.
+minimumReleaseAgeExclude:
+  - '@vfx-js/*'
