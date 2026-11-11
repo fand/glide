@@ -1,0 +1,35 @@
+/* Shared styles for demo2.md (loaded with the `css:` frontmatter key). */
+.result { font-size: 0.6rem; color: var(--muted); margin-top: 1rem; }
+.tests { font-size: 0.7rem; color: var(--muted); }
+.row { display: flex; gap: 2rem; align-items: center; justify-content: center; }
+.slide table { font-size: 0.55rem; margin: 0 auto; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.slide table th, .slide table td { padding: 0.05rem 0.6rem; line-height: 1.3; }
+
+/* Full-screen photo per slide (Unsplash), darkened so text stays readable.
+   Slides cycle through 4 photos, so transitions show the change. */
+.slide {
+  --img: url("bg-1.jpg");
+  background:
+    linear-gradient(rgb(0 0 0 / 0.55), rgb(0 0 0 / 0.55)),
+    var(--img) center / cover no-repeat;
+}
+.slide[data-index="0"] { --img: url("bg-1.jpg"); }
+.slide[data-index="1"] { --img: url("bg-2.jpg"); }
+.slide[data-index="2"] { --img: url("bg-3.jpg"); }
+.slide[data-index="3"] { --img: url("bg-4.jpg"); }
+.slide[data-index="4"] { --img: url("bg-1.jpg"); }
+.slide[data-index="5"] { --img: url("bg-2.jpg"); }
+.slide[data-index="6"] { --img: url("bg-3.jpg"); }
+.slide[data-index="7"] { --img: url("bg-4.jpg"); }
+.slide[data-index="8"] { --img: url("bg-1.jpg"); }
+.slide[data-index="9"] { --img: url("bg-2.jpg"); }
+.slide[data-index="10"] { --img: url("bg-3.jpg"); }
+.slide[data-index="11"] { --img: url("bg-4.jpg"); }
+.slide[data-index="12"] { --img: url("bg-1.jpg"); }
+.slide[data-index="13"] { --img: url("bg-2.jpg"); }
+.slide[data-index="14"] { --img: url("bg-3.jpg"); }
+.slide[data-index="15"] { --img: url("bg-4.jpg"); }
+.slide[data-index="16"] { --img: url("bg-1.jpg"); }
+.slide[data-index="17"] { --img: url("bg-2.jpg"); }
+.slide[data-index="18"] { --img: url("bg-3.jpg"); }

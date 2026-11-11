@@ -1,0 +1,75 @@
+/* Catppuccin: https://catppuccin.com/palette */
+.theme-mocha {
+  --bg: #1e1e2e;
+  --fg: #cdd6f4;
+  --accent: #cba6f7;
+  --link: #89b4fa;
+  --muted: #a6adc8;
+  --border: #45475a;
+  --code-bg: #11111b;
+  --code-fg: #cdd6f4;
+}
+
+.theme-macchiato {
+  --bg: #24273a;
+  --fg: #cad3f5;
+  --accent: #c6a0f6;
+  --link: #8aadf4;
+  --muted: #a5adcb;
+  --border: #494d64;
+  --code-bg: #181926;
+  --code-fg: #cad3f5;
+}
+
+.theme-frappe {
+  --bg: #303446;
+  --fg: #c6d0f5;
+  --accent: #ca9ee6;
+  --link: #8caaee;
+  --muted: #a5adce;
+  --border: #51576d;
+  --code-bg: #232634;
+  --code-fg: #c6d0f5;
+}
+
+/* Code blocks stay dark on latte so one highlight.js style fits all themes. */
+.theme-latte {
+  --bg: #eff1f5;
+  --fg: #4c4f69;
+  --accent: #8839ef;
+  --link: #1e66f5;
+  --muted: #6c6f85;
+  --border: #bcc0cc;
+  --code-bg: #1e1e2e;
+  --code-fg: #cdd6f4;
+}
+
+/* Color pairs from glide v1 */
+.theme-red_white,
+.theme-red_black,
+.theme-blue_white,
+.theme-blue_black,
+.theme-yellow_white,
+.theme-yellow_black,
+.theme-green_white,
+.theme-green_black,
+.theme-black_white,
+.theme-black_red {
+  --accent: var(--fg);
+  --link: var(--fg);
+  --muted: color-mix(in srgb, var(--fg) 70%, var(--bg));
+  --border: color-mix(in srgb, var(--fg) 40%, var(--bg));
+  --code-bg: #052c39;
+  --code-fg: #ededff;
+}
+
+.theme-red_white { --bg: #ef476f; --fg: #ededff; }
+.theme-red_black { --bg: #ef476f; --fg: #073b4c; }
+.theme-blue_white { --bg: #118ab2; --fg: #ededff; }
+.theme-blue_black { --bg: #118ab2; --fg: #073b4c; }
+.theme-yellow_white { --bg: #ffd166; --fg: #ededff; }
+.theme-yellow_black { --bg: #ffd166; --fg: #073b4c; }
+.theme-green_white { --bg: #06d6a0; --fg: #ededff; }
+.theme-green_black { --bg: #06d6a0; --fg: #073b4c; }
+.theme-black_white { --bg: #073b4c; --fg: #ededff; }
+.theme-black_red { --bg: #073b4c; --fg: #ef476f; }

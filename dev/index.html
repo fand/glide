@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title></title>
+    <style>
+      html, body { margin: 0; background: #1e1e2e; }
+    </style>
+  </head>
+  <body>
+    <script type="module">
+      import { run } from "/src/runtime/index.ts";
+
+      const md = await fetch("/examples/demo.md").then((r) => r.text());
+      window.deck = run(md, { baseUrl: "/examples/" });
+    </script>
+  </body>
+</html>
