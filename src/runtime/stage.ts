@@ -336,6 +336,7 @@ export async function attachTransitions(
         transition: cls,
         params: resolved.params,
         duration: owner.duration,
+        ease: owner.transition.ease,
         reverse: ctx.direction === -1,
       },
     );

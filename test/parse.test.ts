@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { parse } from "../src/runtime/parse.ts";
+import { resolveTransition } from "../src/runtime/transitions/index.ts";
 import { parseFrontmatter } from "../src/runtime/frontmatter.ts";
 import { escapeScriptText, unescapeScriptText } from "../src/cli/template.ts";
 
@@ -43,7 +44,7 @@ test("inline header list", () => {
 
 test("no frontmatter", () => {
   const { meta, body } = parseFrontmatter("# Hi\n");
-  assert.deepEqual(meta, { header: [], transitions: {}, data: {} });
+  assert.deepEqual(meta, { header: [], shaderFiles: {}, transitionDefs: {}, data: {} });
   assert.equal(body, "# Hi\n");
 });
 
@@ -167,4 +168,54 @@ test("script text escaping round-trips", () => {
     assert.doesNotMatch(e, /<\/script|<!--/i);
     assert.equal(unescapeScriptText(e), s);
   }
+});
+
+test("transition block in frontmatter", () => {
+  const { slides, meta } = parse(
+    ["---", "transition:", "  type: pixelsort", "  direction: left", "  blockSize: 16", "  loop: true", "  ease: linear", "duration: 2", "---", "# A"].join("\n"),
+  );
+  assert.deepEqual(meta.transition, {
+    name: "pixelsort",
+    args: [],
+    params: { direction: "left", blockSize: 16, loop: true },
+    ease: "linear",
+  });
+  assert.equal(slides[0].duration, 2);
+});
+
+test("transitionDefs names expand on slides; duration order", () => {
+  const md = [
+    "---",
+    "duration: 0.5",
+    "transitionDefs:",
+    "  melt:",
+    "    type: pixelsort",
+    "    direction: right",
+    "    duration: 1.5",
+    "---",
+    "<!-- transition: melt -->",
+    "# A",
+    "---",
+    "<!-- transition: melt down -->",
+    "<!-- duration: 3 -->",
+    "# B",
+    "---",
+    "<!-- transition: swipe -->",
+    "# C",
+  ].join("\n");
+  const [a, b, c] = parse(md).slides;
+  assert.deepEqual(a.transition, { name: "pixelsort", args: [], params: { direction: "right" }, duration: 1.5 });
+  assert.equal(a.duration, 1.5);
+  // Words after the def name stay, but named params win over them.
+  assert.deepEqual(b.transition.args, ["down"]);
+  assert.equal(b.duration, 3);
+  assert.deepEqual(resolveTransition(b.transition)?.params, { direction: "right" });
+  assert.equal(c.duration, 0.5);
+});
+
+test("params by name win over words", (t) => {
+  t.mock.method(console, "warn", () => {});
+  const r = resolveTransition({ name: "pixelsort", args: ["up"], params: { direction: "left" } });
+  assert.deepEqual(r?.params, { direction: "left" });
+  assert.deepEqual(resolveTransition({ name: "glitch", args: [], params: { amount: 2 } })?.params, { amount: 2 });
 });

@@ -1,6 +1,6 @@
 ---
 title: 発表スライド作ってみた
-transitions:
+transitionDefs:
   wipe: ./wipe.frag
 ---
 

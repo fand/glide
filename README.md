@@ -174,15 +174,45 @@ Set them per deck (frontmatter) or per slide (directive). A slide's transition p
 
 Unknown names fall back to `crossfade`. `duration` is in seconds (default `0.5`).
 
+### Transition params
+
+Write the transition as a block to pass params by name. `type` is the transition; `duration` and `ease` (`smoothstep` or `linear`) set the timing; every other key goes to the [VFX-JS transition](https://github.com/fand/vfx-js/blob/main/docs/TRANSITION.md) as a constructor param (`direction`, `blockSize`, `amount`, ...).
+
+```yaml
+---
+transition:
+  type: pixelsort
+  direction: right
+  duration: 1.5
+---
+```
+
+Params by name win over words (`pixelsort up` with `direction: right` sorts right).
+
+Give a block a name under `transitionDefs:` to reuse it on slides:
+
+```yaml
+---
+transitionDefs:
+  melt:
+    type: pixelsort
+    direction: right
+    duration: 1.5
+---
+<!-- transition: melt -->
+```
+
+A slide's `<!-- duration -->` beats the transition's `duration`, which beats the deck's.
+
 Moving content is re-captured every frame automatically; see [What the GPU stage can show](#what-the-gpu-stage-can-show).
 
 ### Custom transitions
 
-Ship your own shaders next to the markdown and name them in the frontmatter:
+Ship your own shaders next to the markdown and name them under `transitionDefs:` with a path:
 
 ```yaml
 ---
-transitions:
+transitionDefs:
   wipe: ./wipe.frag
   burn: ./shaders/burn.glsl
 ---

@@ -67,6 +67,7 @@ const warned = new Set<string>();
 /**
  * Look up a transition: the deck's own (`local`) first, then the built-ins.
  * Returns null for `none`. Unknown names fall back to crossfade.
+ * Params written by name (`direction: right`) win over words (`pixelsort right`).
  */
 export function resolveTransition(t: Transition, local?: TransitionMap): ResolvedTransition | null {
   const name = t.name.toLowerCase();
@@ -81,5 +82,7 @@ export function resolveTransition(t: Transition, local?: TransitionMap): Resolve
     }
     def = REGISTRY.get("crossfade") as TransitionDef;
   }
-  return { def, params: def.parseArgs?.(t.args) };
+  const fromArgs = def.parseArgs?.(t.args);
+  const params = fromArgs || t.params ? { ...fromArgs, ...t.params } : undefined;
+  return { def, params };
 }

@@ -11,15 +11,36 @@ import { serializeForScript } from "../src/cli/template.ts";
 
 const BODY = "vec4 transition(vec2 uv, float t) { return readTo(uv); }";
 
-test("frontmatter transitions map", () => {
+test("frontmatter transitionDefs: shader paths and named transitions", () => {
   const { meta } = parseFrontmatter(
-    ["---", "transitions:", "  wipe: ./wipe.frag", '  Burn: "shaders/burn.glsl"', "title: T", "---", "# A"].join("\n"),
+    [
+      "---",
+      "transitionDefs:",
+      "  wipe: ./wipe.frag",
+      '  Burn: "shaders/burn.glsl"',
+      "  melt:",
+      "    type: pixelsort",
+      "    direction: right",
+      "    duration: 1.5",
+      "  slow:",
+      "    type: wipe",
+      "    ease: linear",
+      "  broken:",
+      "    direction: up",
+      "title: T",
+      "---",
+      "# A",
+    ].join("\n"),
   );
-  assert.deepEqual(meta.transitions, { wipe: "./wipe.frag", burn: "shaders/burn.glsl" });
+  assert.deepEqual(meta.shaderFiles, { wipe: "./wipe.frag", burn: "shaders/burn.glsl" });
+  assert.deepEqual(meta.transitionDefs, {
+    melt: { name: "pixelsort", args: [], params: { direction: "right" }, duration: 1.5 },
+    slow: { name: "wipe", args: [], ease: "linear" },
+  });
   assert.equal(meta.title, "T");
 
-  const scalar = parseFrontmatter("---\ntransitions: ./wipe.frag\ntitle: T\n---\n").meta;
-  assert.deepEqual(scalar.transitions, {});
+  const scalar = parseFrontmatter("---\ntransitionDefs: ./wipe.frag\ntitle: T\n---\n").meta;
+  assert.deepEqual(scalar.shaderFiles, {});
   assert.equal(scalar.title, "T");
 });
 
@@ -63,7 +84,7 @@ test("loadShaders reads listed files inside the md folder only", async (t) => {
   fs.symlinkSync(path.join(tmp, "secret.frag"), path.join(dir, "link.frag"));
   const md = [
     "---",
-    "transitions:",
+    "transitionDefs:",
     "  ok: ./shaders/ok.frag",
     "  missing: ./nope.frag",
     "  escape: ../secret.frag",

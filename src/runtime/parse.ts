@@ -105,6 +105,30 @@ export function parseDirectives(src: string): {
   return { directives, body: lines.slice(i).join("\n") };
 }
 
+/**
+ * Replace a `transitionDefs` name with its def. Words and params written
+ * with the name win over the def's.
+ */
+export function expandTransition(t: Transition, defs: Record<string, Transition>): Transition {
+  const def = defs[t.name.toLowerCase()];
+  if (!def) {
+    return t;
+  }
+  const out: Transition = { name: def.name, args: t.args.length > 0 ? t.args : def.args };
+  if (def.params || t.params) {
+    out.params = { ...def.params, ...t.params };
+  }
+  const duration = t.duration ?? def.duration;
+  if (duration !== undefined) {
+    out.duration = duration;
+  }
+  const ease = t.ease ?? def.ease;
+  if (ease) {
+    out.ease = ease;
+  }
+  return out;
+}
+
 function renderMarkdown(src: string): string {
   return marked.parse(src, { async: false }) as string;
 }
@@ -124,12 +148,13 @@ export function parse(md: string): ParsedDeck {
       index: slides.length,
       html: "",
       transition: meta.transition ?? { name: DEFAULT_TRANSITION, args: [] },
-      duration: meta.duration ?? DEFAULT_DURATION,
+      duration: DEFAULT_DURATION,
       layout: meta.layout ?? "normal",
       theme: undefined,
       data: {},
     };
 
+    let duration: number | undefined;
     for (const [key, value] of Object.entries(directives)) {
       const str = value === true ? "" : value;
       switch (key) {
@@ -138,13 +163,9 @@ export function parse(md: string): ParsedDeck {
             slide.transition = parseTransition(str);
           }
           break;
-        case "duration": {
-          const n = parseNumber(str);
-          if (n !== undefined) {
-            slide.duration = n;
-          }
+        case "duration":
+          duration = parseNumber(str) ?? duration;
           break;
-        }
         case "layout":
           slide.layout = parseLayout(str) ?? slide.layout;
           break;
@@ -164,6 +185,10 @@ export function parse(md: string): ParsedDeck {
           slide.data[key] = value;
       }
     }
+
+    slide.transition = expandTransition(slide.transition, meta.transitionDefs);
+    // Slide directive, then the transition's own, then the deck's.
+    slide.duration = duration ?? slide.transition.duration ?? meta.duration ?? DEFAULT_DURATION;
 
     if (slide.layout === "two-column") {
       const [left, ...rest] = splitOutsideFences(src, "|||");

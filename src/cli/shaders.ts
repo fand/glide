@@ -17,15 +17,15 @@ async function resolveInside(root: string, rel: string): Promise<string | null> 
 }
 
 /**
- * Read the shader files listed under `transitions:` in the frontmatter.
+ * Read the shader files listed under `transitionDefs:` in the frontmatter.
  * Paths are relative to the markdown and must stay inside its folder.
  * Bad entries are skipped with a warning; the deck then falls back to crossfade.
  */
 export async function loadShaders(mdPath: string, md: string): Promise<Record<string, string>> {
-  const { transitions } = parseFrontmatter(md).meta;
+  const { shaderFiles } = parseFrontmatter(md).meta;
   const dir = path.dirname(path.resolve(mdPath));
   const out: Record<string, string> = {};
-  for (const [name, rel] of Object.entries(transitions)) {
+  for (const [name, rel] of Object.entries(shaderFiles)) {
     const file = await resolveInside(dir, rel);
     if (!file) {
       console.warn(`warning: transition "${name}": cannot read '${rel}' (missing or outside ${dir})`);
