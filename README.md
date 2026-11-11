@@ -54,7 +54,7 @@ deck.next();
 ---
 title: My talk
 theme: mocha
-transition: crossfade
+transition: swipe
 duration: 0.5
 layout: normal
 css: ./style.css
@@ -161,8 +161,8 @@ Set them per deck (frontmatter) or per slide (directive). A slide's transition p
 
 | Name | Aliases | Description |
 | --- | --- | --- |
-| `crossfade` (default) | `fade` | Fades the old slide into the new one. |
-| `swipe` | `slide` | Slides the new slide in. Arg `left` (default), `right`, `up`, `down` is the way the content moves: `swipe left` moves the old slide out to the left and brings the new one in from the right. |
+| `crossfade` | `fade` | Fades the old slide into the new one. |
+| `swipe` (default) | `slide` | Slides the new slide in. Arg `left` (default), `right`, `up`, `down` is the way the content moves: `swipe left` moves the old slide out to the left and brings the new one in from the right. |
 | `zoom` | | The old slide shrinks into the center while the new one grows out of it. |
 | `zoom_blur` | `zoom-blur` | Crossfade with a radial blur and RGB split that peaks halfway. |
 | `crosszoom` | `cross-zoom` | Crossfade through a zoom blur toward the center that peaks halfway. |

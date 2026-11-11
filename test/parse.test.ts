@@ -52,7 +52,7 @@ test("defaults", () => {
   assert.equal(slides.length, 1);
   const s = slides[0];
   assert.equal(s.index, 0);
-  assert.deepEqual(s.transition, { name: "crossfade", args: [] });
+  assert.deepEqual(s.transition, { name: "swipe", args: [] });
   assert.equal(s.duration, 0.5);
   assert.equal(s.layout, "normal");
   assert.equal(s.theme, undefined);

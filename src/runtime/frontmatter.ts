@@ -17,7 +17,7 @@ export type Frontmatter = {
   data: Record<string, string>;
 };
 
-export const DEFAULT_TRANSITION = "crossfade";
+export const DEFAULT_TRANSITION = "swipe";
 export const DEFAULT_DURATION = 0.5;
 
 const LAYOUTS: Layout[] = ["normal", "center", "two-column"];
