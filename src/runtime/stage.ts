@@ -111,7 +111,7 @@ export async function attachTransitions(
   const hic = supportsHtmlInCanvas();
   if (!hic) {
     console.info(
-      "glide: HTML-in-Canvas is off, using a slower fallback. Enable chrome://flags/#canvas-draw-element in Chrome.",
+      "glide: HTML-in-Canvas is not available, using a slower fallback. Use Chrome 157+ for full transitions.",
     );
   }
 
@@ -161,7 +161,7 @@ export async function attachTransitions(
     hitTest = !hic || probeHitTest(stage);
     if (!hitTest) {
       console.info(
-        "glide: this browser does not send clicks into HTML-in-Canvas, so interactive slides show as plain DOM. Enable chrome://flags/#enable-experimental-web-platform-features to fix.",
+        "glide: this browser does not send clicks into HTML-in-Canvas, so interactive slides show as plain DOM while idle.",
       );
     }
     parks = deck.slides.map(

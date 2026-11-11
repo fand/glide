@@ -24,5 +24,4 @@
 
 ## Watch
 
-- [ ] The HTML-in-Canvas origin trial runs through Chrome 160. Expect more API changes (Chrome 159 already needs `content="drawable"`).
 - [ ] crbug.com/540532973 (nested canvas drawn at the wrong size). When it is fixed, check whether vfx-js can stop redrawing nested canvases. The second bug (a nested canvas clipped to a box at the element's origin) is not reported upstream.

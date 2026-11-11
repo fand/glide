@@ -10,7 +10,7 @@ glide v2 is a rewrite as a plain web app.
 - Custom GLSL transitions from files listed under `transitions:` in the frontmatter.
 - Interactive slides: slide `<script>`s run on mount, with `Glide.onUnmount()` for cleanup. Video, iframes, canvases (2D, WebGL, p5.js, three.js), forms and Web Components work; content the GPU stage cannot capture is shown as plain DOM.
 - Themes (Catppuccin and the v1 color pairs), layouts (`normal`, `center`, `two-column`), header items, page counter, keyboard / click / touch navigation, fullscreen (`f`), key help (`?`).
-- Requirements: Node.js 20+ for the CLI. GPU transitions need Chrome with `chrome://flags/#canvas-draw-element`; other browsers use a slower fallback, and `--no-gpu` turns transitions off.
+- Requirements: Node.js 20+ for the CLI. GPU transitions need Chrome 157+ (HTML-in-Canvas); other browsers use a slower fallback, and `--no-gpu` turns transitions off.
 
 ### Breaking
 

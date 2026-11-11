@@ -16,7 +16,7 @@ $ npm i -g @fand/glide
 Requirements:
 
 - Node.js 20+ for the CLI.
-- Browser: GPU transitions need Chrome 156+ with `chrome://flags/#canvas-draw-element` enabled (Chrome 159 also hit-tests slide content; on 156 enable `chrome://flags/#enable-experimental-web-platform-features` for that). Other browsers use a slower fallback; `--no-gpu` turns transitions off.
+- Browser: GPU transitions need Chrome 157+ (HTML-in-Canvas). Other browsers use a slower fallback; `--no-gpu` turns transitions off.
 
 ## Usage
 
@@ -145,7 +145,7 @@ Some content cannot be shown live in the GPU stage. glide then **parks** the sli
 
 - cross-origin iframes (YouTube, ...): captured blank, so they show black during the transition;
 - without HTML-in-Canvas (the fallback): also video, canvases, iframes, GIFs, SMIL, scripts and interactive content, since dom-to-canvas cannot draw them or loses their state (typed text, scroll position). Their transitions use the dom-to-canvas capture, so those parts may look blank mid-transition;
-- if the browser does not send clicks into HTML-in-Canvas (Chrome 156 without `chrome://flags/#enable-experimental-web-platform-features`; Chrome 159 hit-tests without it): slides with form controls, iframes, audio, `<canvas>`, `<script>`, `[onclick]` or `[data-glide-interactive]`. Canvases and scripts are included because glide can't tell which ones listen for the pointer.
+- if the browser does not send clicks into HTML-in-Canvas (older Chrome builds): slides with form controls, iframes, audio, `<canvas>`, `<script>`, `[onclick]` or `[data-glide-interactive]`. Canvases and scripts are included because glide can't tell which ones listen for the pointer.
 
 Canvases (2D, WebGL, p5.js, three.js) stay in the GPU stage. Chrome draws a nested canvas at the wrong size or clips it; vfx-js detects that and redraws each canvas over the capture at its layout size. Elements stacked above a canvas are hidden by that redraw.
 
@@ -154,7 +154,7 @@ Override per slide: `<!-- gpu: false -->` keeps the slide in the plain-DOM layer
 ## Transitions
 
 Transitions run in WebGL on [VFX-JS](https://github.com/fand/vfx-js) with HTML-in-Canvas.
-HTML-in-Canvas needs Chrome with `chrome://flags/#canvas-draw-element` enabled.
+HTML-in-Canvas needs Chrome 157+.
 Other browsers use a slower fallback (dom-to-canvas), where animated GIFs and videos do not move.
 
 Set them per deck (frontmatter) or per slide (directive). A slide's transition plays when you move to it; moving back plays it in reverse.
