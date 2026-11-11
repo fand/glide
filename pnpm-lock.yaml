@@ -167,11 +167,11 @@ importers:
   .:
     dependencies:
       '@vfx-js/core':
-        specifier: ^1.3.0
-        version: 1.3.0
-      '@vfx-js/effects':
-        specifier: ^1.4.1
-        version: 1.4.1(@vfx-js/core@1.3.0)
+        specifier: ^1.6.0
+        version: 1.6.0
+      '@vfx-js/transitions':
+        specifier: ^0.1.2
+        version: 0.1.2(@vfx-js/core@1.6.0)
       chokidar:
         specifier: ^4.0.3
         version: 4.0.3
@@ -660,13 +660,18 @@ packages:
   '@types/node@22.20.5':
     resolution: {integrity: sha512-U2+DNr+wSjpsTS/wZGYHq7GcwfuSmKiKvoPvK22zwTlRhU91yOniN4qRR5KhIjvif7ysw/dz/hKmfDH0Ris4aA==}
 
-  '@vfx-js/core@1.3.0':
-    resolution: {integrity: sha512-7TdY/hhlmOyZYSXRJFvte0okbNcfWc2C0VdQ8nRD2xhJkxIN7ic2gLfgcpsiMFUDVsdNVt9reu7AZuDu8NQ3zw==}
+  '@vfx-js/core@1.6.0':
+    resolution: {integrity: sha512-XH2c/B6KONbBxzmy1sqHFgfcRFFPd8AexqDWrwZ0CCIHIM8FqxsE0vl599Av/VcEdsWlMiyiBVwa5i8jXFNcwA==}
 
-  '@vfx-js/effects@1.4.1':
-    resolution: {integrity: sha512-iDBbVFCNFiagd08F+oIEnHAUl+FWB5B8G0hlAz+Sl02FMIYkAvKijBXz+7f8L8P1CTt+AZZ/upmULqR9QUStGA==}
+  '@vfx-js/effects@1.4.4':
+    resolution: {integrity: sha512-NYiHcfD8o+1P7pYVsPV3eRmnNlPoIpci0CNPuOGOIv4W9CoRRroQgC1HiERVb9rTp3MPEYyYtt18LFbkpLygeA==}
     peerDependencies:
-      '@vfx-js/core': '>=1.3.0'
+      '@vfx-js/core': '>=1.6.0'
+
+  '@vfx-js/transitions@0.1.2':
+    resolution: {integrity: sha512-IdqH08ftyhHCqWji6fRZBfauw2JLdGilq5YaVXZcYxqPU8zbtsvvB7Qm29ZAjvty/Y8WVCJ88jwPfNF4QjAU9g==}
+    peerDependencies:
+      '@vfx-js/core': '>=1.6.0'
 
   chokidar@4.0.3:
     resolution: {integrity: sha512-Qgzu8kfBvo+cA4962jnP1KkS6Dop5NS6g7R5LFYJr4b8Ub94PPQXUksCw9PvXoeXPRRddRNC5C1JQUR2SMGtnA==}
@@ -1028,11 +1033,16 @@ snapshots:
     dependencies:
       undici-types: 6.21.0
 
-  '@vfx-js/core@1.3.0': {}
+  '@vfx-js/core@1.6.0': {}
 
-  '@vfx-js/effects@1.4.1(@vfx-js/core@1.3.0)':
+  '@vfx-js/effects@1.4.4(@vfx-js/core@1.6.0)':
     dependencies:
-      '@vfx-js/core': 1.3.0
+      '@vfx-js/core': 1.6.0
+
+  '@vfx-js/transitions@0.1.2(@vfx-js/core@1.6.0)':
+    dependencies:
+      '@vfx-js/core': 1.6.0
+      '@vfx-js/effects': 1.4.4(@vfx-js/core@1.6.0)
 
   chokidar@4.0.3:
     dependencies:

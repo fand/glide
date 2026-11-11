@@ -194,10 +194,10 @@ A shader file is a GLSL ES 3.0 body that defines `vec4 transition(vec2 uv, float
 
 - `uv` is 0..1 over the slide, origin at the bottom left.
 - `t` goes 0 → 1, already eased. Moving back plays it in reverse for you (old and new swap roles), so write only the forward animation.
-- Read the slides with `readFrom(uv)` (old) and `readTo(uv)` (new). Reads outside 0..1 return transparent black; `inRange(uv)` tells you if a point is inside.
+- Read the slides with `readFrom(uv)` (old) and `readTo(uv)` (new). Reads are premultiplied alpha. Reads outside 0..1 return transparent black; `inRange(uv)` tells you if a point is inside.
 - Uniforms you can use: `t`, `reverse`, `resolution` (px), `time` (s). Do not declare your own uniforms; nothing sets them.
 - Do not write `#version` or `precision`; glide adds them and refuses a shader that has `#version`.
-- Return the output color. It should be opaque where the slide is.
+- Return the output color, premultiplied. Transparent areas show the page behind the deck.
 
 `examples/wipe.frag`:
 
@@ -215,7 +215,7 @@ vec4 transition(vec2 uv, float t) {
 }
 ```
 
-The CLI reads the files (they must be inside the markdown's folder) and puts them in the page, so `glide build` output needs no extra files. Edits reload in `glide slide.md`. With the library, pass the sources yourself: `run(md, { shaders: { wipe: src } })`, or call `registerTransition()` to add one for every deck.
+The CLI reads the files (they must be inside the markdown's folder) and puts them in the page, so `glide build` output needs no extra files. Edits reload in `glide slide.md`. With the library, pass the sources yourself: `run(md, { shaders: { wipe: src } })`, or call `registerTransition({ name, load, parseArgs })` to add one for every deck. `load` returns a [VFX-JS transition class](https://github.com/fand/vfx-js/blob/main/docs/TRANSITION.md), e.g. a `ShaderTransition` subclass or a preset from `@vfx-js/transitions`.
 
 If a shader fails to compile, glide logs the error to the console and cuts straight to the next slide.
 

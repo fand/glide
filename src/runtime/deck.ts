@@ -1,3 +1,4 @@
+import { isHicCanvas } from "@vfx-js/core";
 import { parse, type ParsedDeck, type Slide } from "./parse.ts";
 import slideCss from "./slide.css?inline";
 import themesCss from "./themes.css?inline";
@@ -178,13 +179,6 @@ const INTERACTIVE = [
 /** Minimum horizontal travel (CSS px) of a touch swipe. */
 const SWIPE_MIN = 50;
 
-function isCaptureCanvas(el: Element): boolean {
-  return (
-    el.tagName === "CANVAS" &&
-    (el.hasAttribute("layoutsubtree") || el.getAttribute("content") === "drawable")
-  );
-}
-
 /**
  * Whether a click or swipe at (x, y) on `t` belongs to the slide content.
  * The capture canvas that wraps the stage is not content. Without hit
@@ -194,7 +188,7 @@ function isInteractive(t: EventTarget | null, x: number, y: number): boolean {
   if (!(t instanceof Element)) {
     return false;
   }
-  if (isCaptureCanvas(t)) {
+  if (isHicCanvas(t)) {
     for (const el of t.querySelectorAll(INTERACTIVE)) {
       for (const r of el.getClientRects()) {
         if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) {
@@ -205,7 +199,7 @@ function isInteractive(t: EventTarget | null, x: number, y: number): boolean {
     return false;
   }
   const hit = t.closest(INTERACTIVE);
-  return hit !== null && !isCaptureCanvas(hit);
+  return hit !== null && !isHicCanvas(hit);
 }
 
 /** Keys that these elements use themselves while focused. */
@@ -529,7 +523,7 @@ export function run(md: string, opts: RunOpts = {}): Deck {
   let touchY: number | null = null;
   function onTouchMove(e: TouchEvent): void {
     const y = e.touches[0]?.clientY;
-    if (y === undefined || !mounted || !(e.target instanceof Element) || !isCaptureCanvas(e.target)) {
+    if (y === undefined || !mounted || !(e.target instanceof Element) || !isHicCanvas(e.target)) {
       return;
     }
     if (touchY !== null) {

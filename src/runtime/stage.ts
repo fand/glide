@@ -1,13 +1,7 @@
-import { VFX, supportsHtmlInCanvas, type Effect } from "@vfx-js/core";
+import { VFX, supportsHtmlInCanvas, type TransitionClass } from "@vfx-js/core";
 import type { Deck } from "./deck.ts";
-import { TransitionEffect } from "./transitions/base.ts";
-import { buildFrag } from "./transitions/glsl.ts";
 import { staticClone } from "./clone.ts";
-import {
-  resolveTransition,
-  type TransitionDef,
-  type TransitionMap,
-} from "./transitions/index.ts";
+import { resolveTransition, type TransitionMap } from "./transitions/index.ts";
 
 export type Transitions = { destroy(): void };
 
@@ -104,25 +98,11 @@ function probeHitTest(stage: HTMLElement): boolean {
 
 const nextFrame = () => new Promise<void>((r) => requestAnimationFrame(() => r()));
 
-/** Resolve on the wrapper canvas's next `paint` event (a new capture), or after `ms`. */
-function nextPaint(canvas: HTMLCanvasElement | null, ms = 300): Promise<void> {
-  if (!canvas) {
-    return Promise.resolve();
-  }
-  return new Promise((resolve) => {
-    const done = () => {
-      clearTimeout(timer);
-      canvas.removeEventListener("paint", done);
-      resolve();
-    };
-    const timer = setTimeout(done, ms);
-    canvas.addEventListener("paint", done);
-  });
-}
-
 /**
- * Wrap `deck.stage` with HTML-in-Canvas and run slide transitions on it.
- * Without HTML-in-Canvas, vfx-js falls back to dom-to-canvas capture.
+ * Run slide transitions on `deck.stage` with `vfx.addTransition`.
+ * The stage is plain DOM until the first run wraps it with HTML-in-Canvas,
+ * and stays wrapped after that. Without HTML-in-Canvas, vfx-js falls back
+ * to dom-to-canvas capture.
  */
 export async function attachTransitions(
   deck: Deck,
@@ -136,34 +116,20 @@ export async function attachTransitions(
   }
 
   const vfx = new VFX({ scrollPadding: false, wrapper: deck.el, zIndex: 0 });
-  const effect = new TransitionEffect();
   const stage = deck.stage;
-  await vfx.addHTML(stage, { effect });
-
-  const wrapper =
-    hic && stage.parentElement instanceof HTMLCanvasElement ? stage.parentElement : null;
-
-  const fragCache = new Map<TransitionDef, string>();
-  const fragOf = (def: TransitionDef) => {
-    let f = fragCache.get(def);
-    if (!f) {
-      f = buildFrag(def.frag);
-      fragCache.set(def, f);
-    }
-    return f;
-  };
+  const transition = vfx.addTransition(stage, { keepWrapped: true });
+  /** Set after the first run wraps the stage. Until then it is plain DOM. */
+  let wrapped = false;
 
   let destroyed = false;
   let updating = false;
   /** Ask for a new capture. Resolves once it has landed (best effort). */
   async function recapture(): Promise<void> {
-    if (destroyed) {
+    if (destroyed || !wrapped) {
       return;
     }
     if (hic) {
-      const painted = nextPaint(wrapper);
       await vfx.update(stage);
-      await painted;
     } else {
       // dom-to-canvas is slow; skip if one is in flight.
       if (updating) {
@@ -178,22 +144,30 @@ export async function attachTransitions(
     }
   }
 
-  const hitTest = !hic || probeHitTest(stage);
-  if (!hitTest) {
-    console.info(
-      "glide: this browser does not send clicks into HTML-in-Canvas, so interactive slides show as plain DOM. Enable chrome://flags/#enable-experimental-web-platform-features to fix.",
-    );
-  }
+  // Plain DOM gets every click, so this only turns false once the stage is wrapped.
+  let hitTest = true;
 
   // `gpu: false` slides always live in the plain-DOM layer (cut transitions).
   // Slides the stage cannot show live (cross-origin iframes, interactive
   // content without hit testing, ...) are "parked": they sit in the GPU
   // stage while a transition runs and move to the plain-DOM layer when idle.
   const isPlain = (i: number) => deck.slides[i]?.gpu === false;
-  const parks = deck.slides.map(
-    (s) => s.gpu === undefined && needsPlainDom(s.html + (s.htmlRight ?? ""), hic, hitTest),
-  );
+  let parks: boolean[] = [];
   const parksIdle = (i: number) => parks[i] ?? false;
+
+  /** Called once the first run has wrapped the stage. */
+  function onWrapped(): void {
+    wrapped = true;
+    hitTest = !hic || probeHitTest(stage);
+    if (!hitTest) {
+      console.info(
+        "glide: this browser does not send clicks into HTML-in-Canvas, so interactive slides show as plain DOM. Enable chrome://flags/#enable-experimental-web-platform-features to fix.",
+      );
+    }
+    parks = deck.slides.map(
+      (s) => s.gpu === undefined && needsPlainDom(s.html + (s.htmlRight ?? ""), hic, hitTest),
+    );
+  }
   deck.setPlainDom(isPlain);
   const first = stage.firstElementChild;
   if (first && isPlain(deck.current)) {
@@ -201,17 +175,10 @@ export async function attachTransitions(
     deck.domLayer.classList.add("active");
   }
 
-  /**
-   * Move the idle slide to the plain-DOM layer. The GPU output keeps showing
-   * its last frame underneath, so moving it back later does not flash.
-   */
-  async function park(id: number): Promise<void> {
+  /** Move the idle slide to the plain-DOM layer, above the GPU output. */
+  function park(id: number): void {
     const section = stage.firstElementChild;
-    if (!section) {
-      return;
-    }
-    await effect.snapshot();
-    if (id !== seq || stage.firstElementChild !== section) {
+    if (!section || id !== seq) {
       return;
     }
     moveNode(deck.domLayer, section);
@@ -220,9 +187,9 @@ export async function attachTransitions(
 
   /**
    * Bring a parked slide back into the GPU stage and wait for its capture.
-   * Until the next snapshot is on screen the GPU output still shows the frame
-   * held at parking time, so a still copy of the slide covers it in the
-   * plain-DOM layer. The next mount clears that layer.
+   * Until that capture is on screen the GPU output may not show the slide,
+   * so a still copy of it covers the GPU output in the plain-DOM layer.
+   * The next mount clears that layer.
    */
   async function unpark(): Promise<void> {
     const parked = deck.domLayer.querySelector<HTMLElement>(":scope > section:not([data-glide-clone])");
@@ -324,33 +291,6 @@ export async function attachTransitions(
   void document.fonts?.ready.then(() => recapture());
   void recapture();
 
-  // Driver effects (datamosh, pixelsort, ...) are created on first use and
-  // appended to the chain after `effect`. They pass through while idle.
-  const driverFx = new Map<TransitionDef, Effect[]>();
-  const chain: Effect[] = [effect];
-  async function ensureFx(def: TransitionDef): Promise<Effect[]> {
-    let fx = driverFx.get(def);
-    if (!fx) {
-      fx = def.effects ? await def.effects() : [];
-      driverFx.set(def, fx);
-      if (fx.length > 0) {
-        chain.push(...fx);
-        await vfx.updateEffects(stage, [...chain]);
-      }
-    }
-    return fx;
-  }
-
-  // The driver run that owns the driver effects right now.
-  let active: { id: number; def: TransitionDef; fx: Effect[] } | null = null;
-  function endActive(id?: number): void {
-    if (active && (id === undefined || active.id === id)) {
-      const { def, fx } = active;
-      active = null;
-      def.onEnd?.(fx);
-    }
-  }
-
   let seq = 0;
   deck.setSwapHandler(async (ctx) => {
     const id = ++seq;
@@ -359,66 +299,53 @@ export async function attachTransitions(
     const owner = ctx.direction === 1 ? entering : leaving;
     const resolved = resolveTransition(owner.transition, local);
 
+    let cls: TransitionClass<any> | null = null;
     // `gpu: false` slides are never captured, so there is nothing to animate.
-    if (!resolved || owner.duration <= 0 || isPlain(ctx.from) || isPlain(ctx.to)) {
-      endActive();
-      effect.cancel();
+    if (resolved && owner.duration > 0 && !isPlain(ctx.from) && !isPlain(ctx.to)) {
+      try {
+        cls = await resolved.def.load();
+      } catch (e) {
+        console.error(`glide: transition "${resolved.def.name}" failed to load; cutting to the next slide.`, e);
+      }
+      if (id !== seq) {
+        return;
+      }
+    }
+
+    if (!cls || !resolved) {
+      transition.cancel();
       ctx.mount();
       onMounted();
       await recapture();
       if (id === seq && parksIdle(ctx.to)) {
-        await park(id);
+        park(id);
       }
       return;
     }
 
-    const { def, uniforms } = resolved;
-    const fx = await ensureFx(def);
-    if (id !== seq) {
-      return;
-    }
     await unpark();
     if (id !== seq) {
       return;
     }
-
-    await effect.snapshot();
-    if (id !== seq || deck.current !== ctx.to) {
-      return;
+    await transition.run(
+      () => {
+        ctx.mount();
+        onMounted();
+      },
+      {
+        transition: cls,
+        params: resolved.params,
+        duration: owner.duration,
+        reverse: ctx.direction === -1,
+      },
+    );
+    if (!wrapped && !vfx.reducedMotion) {
+      onWrapped();
     }
-    endActive();
-    const reverse = ctx.direction === -1;
-    if (fx.length > 0 || def.prepare) {
-      active = { id, def, fx };
-      def.prepare?.({ reverse, args: owner.transition.args, uniforms, duration: owner.duration }, fx);
-    }
-    ctx.mount();
-    onMounted();
-    await recapture();
-    if (id !== seq) {
-      return;
-    }
-    await nextFrame();
-    if (id !== seq) {
-      return;
-    }
-    await effect.start({
-      name: def.name,
-      frag: fragOf(def),
-      uniforms,
-      duration: owner.duration,
-      reverse,
-      onFrame: def.onFrame ? (t, x, dt) => def.onFrame?.(t, x, dt, fx) : undefined,
-      onEnd: () => endActive(id),
-    });
     if (id === seq && parksIdle(ctx.to)) {
-      await park(id);
+      park(id);
     }
   });
-  if (parksIdle(deck.current)) {
-    void recapture().then(() => park(seq));
-  }
-
   return {
     destroy() {
       destroyed = true;
@@ -430,7 +357,7 @@ export async function attachTransitions(
       }
       deck.setSwapHandler(null);
       deck.setPlainDom(null);
-      vfx.remove(stage);
+      transition.destroy();
       vfx.destroy();
     },
   };

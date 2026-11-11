@@ -1,18 +1,36 @@
 import type { Transition } from "../frontmatter.ts";
-import type { TransitionDef, TransitionUniforms } from "./types.ts";
-import { crossfade } from "./crossfade.ts";
-import { swipe } from "./swipe.ts";
-import { zoom } from "./zoom.ts";
-import { zoomBlur } from "./zoom-blur.ts";
-import { crosszoom } from "./crosszoom.ts";
-import { glitchSlide } from "./glitch-slide.ts";
-import { glitch } from "./glitch.ts";
-import { datamosh } from "./datamosh.ts";
-import { pixelsort } from "./pixelsort.ts";
+import type { TransitionDef, TransitionParams } from "./types.ts";
 import type { TransitionMap } from "./custom.ts";
 
-export type { TransitionDef, TransitionRun, TransitionUniforms } from "./types.ts";
+export type { TransitionDef, TransitionParams } from "./types.ts";
 export { customTransition, customTransitions, type TransitionMap } from "./custom.ts";
+
+type Presets = typeof import("@vfx-js/transitions");
+
+/** A built-in from `@vfx-js/transitions`, loaded on first use. */
+function preset(
+  name: string,
+  key: keyof Presets,
+  parseArgs?: TransitionDef["parseArgs"],
+): TransitionDef {
+  return {
+    name,
+    load: async () => (await import("@vfx-js/transitions"))[key] as never,
+    parseArgs,
+  };
+}
+
+const DIRECTIONS = ["left", "right", "up", "down"];
+
+/** First arg that names a direction, else `fallback`. */
+export function parseDirection(args: string[], fallback: string): { direction: string } {
+  return { direction: args.find((a) => DIRECTIONS.includes(a)) ?? fallback };
+}
+
+export function parseDatamoshArgs(args: string[]): { blockSize: number } {
+  const n = Number(args[0]);
+  return { blockSize: Number.isFinite(n) && n >= 2 ? Math.round(n) : 32 };
+}
 
 const REGISTRY = new Map<string, TransitionDef>();
 const ALIASES = new Map<string, string>([
@@ -27,22 +45,22 @@ export function registerTransition(def: TransitionDef, aliases: string[] = []): 
   }
 }
 
-registerTransition(crossfade);
-registerTransition(swipe);
-registerTransition(zoom);
-registerTransition(zoomBlur, ["zoom-blur"]);
-registerTransition(crosszoom, ["cross-zoom", "cross_zoom"]);
-registerTransition(glitchSlide, ["glitch-slide"]);
-registerTransition(glitch);
-registerTransition(datamosh);
-registerTransition(pixelsort);
+registerTransition(preset("crossfade", "Crossfade"));
+registerTransition(preset("swipe", "Swipe", (args) => parseDirection(args, "left")));
+registerTransition(preset("zoom", "Zoom"));
+registerTransition(preset("zoom_blur", "ZoomBlur"), ["zoom-blur"]);
+registerTransition(preset("crosszoom", "Crosszoom"), ["cross-zoom", "cross_zoom"]);
+registerTransition(preset("glitch_slide", "GlitchSlide"), ["glitch-slide"]);
+registerTransition(preset("glitch", "Glitch"));
+registerTransition(preset("datamosh", "Datamosh", parseDatamoshArgs));
+registerTransition(preset("pixelsort", "Pixelsort", (args) => parseDirection(args, "up")));
 
 /** Names of all registered transitions (not aliases). */
 export function transitionNames(): string[] {
   return [...REGISTRY.keys()];
 }
 
-export type ResolvedTransition = { def: TransitionDef; uniforms: TransitionUniforms };
+export type ResolvedTransition = { def: TransitionDef; params: TransitionParams | undefined };
 
 const warned = new Set<string>();
 
@@ -61,7 +79,7 @@ export function resolveTransition(t: Transition, local?: TransitionMap): Resolve
       warned.add(name);
       console.warn(`glide: unknown transition "${t.name}", using crossfade`);
     }
-    def = crossfade;
+    def = REGISTRY.get("crossfade") as TransitionDef;
   }
-  return { def, uniforms: def.parseArgs?.(t.args) ?? {} };
+  return { def, params: def.parseArgs?.(t.args) };
 }

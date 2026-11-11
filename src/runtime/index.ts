@@ -17,5 +17,5 @@ export type {
   Transition,
 } from "./frontmatter.ts";
 export { registerTransition } from "./transitions/index.ts";
-export type { TransitionDef, TransitionRun, TransitionUniforms } from "./transitions/index.ts";
+export type { TransitionDef, TransitionParams } from "./transitions/index.ts";
 export { onUnmount, currentSlide } from "./scripts.ts";

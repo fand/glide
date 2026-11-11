@@ -1,6 +1,16 @@
+import type { TransitionClass } from "@vfx-js/core";
 import type { TransitionDef } from "./types.ts";
 
 export type TransitionMap = Map<string, TransitionDef>;
+
+/** A `ShaderTransition` class for a user shader body. */
+async function shaderClass(name: string, frag: string): Promise<TransitionClass<any>> {
+  const { ShaderTransition } = await import("@vfx-js/core");
+  return class extends ShaderTransition {
+    readonly name = name;
+    readonly frag = frag;
+  };
+}
 
 /**
  * Make a transition from a user shader body. Returns null (and logs why)
@@ -17,16 +27,17 @@ export function customTransition(name: string, src: string): TransitionDef | nul
     console.error(`glide: custom transition "${name}" must define vec4 transition(vec2 uv, float t).`);
     return null;
   }
+  let cls: Promise<TransitionClass<any>> | null = null;
   let warned = false;
   return {
     name,
-    frag: src,
+    load: () => (cls ??= shaderClass(name, src)),
     parseArgs(args) {
       if (args.length > 0 && !warned) {
         warned = true;
         console.warn(`glide: custom transition "${name}" takes no args; ignoring "${args.join(" ")}".`);
       }
-      return {};
+      return undefined;
     },
   };
 }

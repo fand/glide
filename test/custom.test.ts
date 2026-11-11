@@ -23,14 +23,17 @@ test("frontmatter transitions map", () => {
   assert.equal(scalar.title, "T");
 });
 
-test("custom transition shadows a built-in only in its own deck", () => {
+test("custom transition shadows a built-in only in its own deck", async () => {
   const local = customTransitions({ crossfade: BODY, Wipe: BODY });
-  assert.equal(resolveTransition(parseTransition("crossfade"), local)?.def.frag, BODY);
-  assert.equal(resolveTransition(parseTransition("wipe"), local)?.def.frag, BODY);
+  const frag = async (name: string, map?: typeof local) => {
+    const cls = await resolveTransition(parseTransition(name), map)!.def.load();
+    return (new cls() as unknown as { frag: string }).frag;
+  };
+  assert.equal(await frag("crossfade", local), BODY);
+  assert.equal(await frag("wipe", local), BODY);
   // Next deck, no custom map: built-in again.
-  const builtin = resolveTransition(parseTransition("crossfade"))!.def;
-  assert.notEqual(builtin.frag, BODY);
-  assert.equal(builtin.name, "crossfade");
+  assert.notEqual(await frag("crossfade"), BODY);
+  assert.equal(resolveTransition(parseTransition("crossfade"))!.def.name, "crossfade");
 });
 
 test("custom transition rejects #version and missing transition()", (t) => {
@@ -44,7 +47,7 @@ test("custom transition rejects #version and missing transition()", (t) => {
 test("custom transition warns once on args", (t) => {
   const warn = t.mock.method(console, "warn", () => {});
   const local = customTransitions({ wipe: BODY });
-  assert.deepEqual(resolveTransition(parseTransition("wipe left"), local)?.uniforms, {});
+  assert.equal(resolveTransition(parseTransition("wipe left"), local)?.params, undefined);
   resolveTransition(parseTransition("wipe left"), local);
   assert.equal(warn.mock.callCount(), 1);
 });
@@ -82,15 +85,4 @@ test("loadShaders reads listed files inside the md folder only", async (t) => {
   assert.doesNotMatch(json, /<\/script|<!--/i);
   assert.deepEqual(JSON.parse(json), { shaders });
   fs.rmSync(tmp, { recursive: true });
-});
-
-test("GLSL errors point into the user's file", async () => {
-  const { buildFrag, describeGlslError } = await import("../src/runtime/transitions/glsl.ts");
-  const body = "vec4 transition(vec2 uv, float t) {\n  return readTo(uv)\n}\n";
-  const full = buildFrag(body).split("\n");
-  // The `}` on body line 3 is where a compiler reports the missing semicolon.
-  const at = full.indexOf("}", full.indexOf("  return readTo(uv)")) + 1;
-  const err = new Error(`[VFX-JS] Shader compile failed: ERROR: 0:${at}: '}' : syntax error\n\nsrc`);
-  assert.deepEqual(describeGlslError(err), ["line 3: '}' : syntax error"]);
-  assert.equal(describeGlslError(new Error("other")), null);
 });

@@ -1,10 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { resolveTransition, transitionNames } from "../src/runtime/transitions/index.ts";
-import { buildFrag } from "../src/runtime/transitions/glsl.ts";
 import { parseTransition } from "../src/runtime/frontmatter.ts";
-import { parseDatamoshArgs } from "../src/runtime/transitions/datamosh.ts";
-import { parsePixelSortArgs } from "../src/runtime/transitions/pixelsort.ts";
+import { parseDatamoshArgs, parseDirection } from "../src/runtime/transitions/index.ts";
 
 const resolve = (s: string) => resolveTransition(parseTransition(s));
 
@@ -50,10 +48,14 @@ test("all transitions and aliases resolve", (t) => {
     "zoom",
     "zoom_blur",
   ]);
-  for (const name of transitionNames()) {
-    assert.match(buildFrag(resolve(name)!.def.frag), /vec4 transition\(vec2 uv, float t\)/);
-  }
   assert.equal(warn.mock.callCount(), 0);
+});
+
+test("built-ins load their @vfx-js/transitions class", async () => {
+  for (const name of transitionNames()) {
+    const cls = await resolve(name)!.def.load();
+    assert.equal(new cls().name, name);
+  }
 });
 
 test("unknown falls back to crossfade with a warning", (t) => {
@@ -62,38 +64,22 @@ test("unknown falls back to crossfade with a warning", (t) => {
   assert.equal(warn.mock.callCount(), 1);
 });
 
-test("swipe args", (t) => {
+test("swipe and pixelsort args", (t) => {
   t.mock.method(console, "warn", () => {});
-  assert.deepEqual(resolve("swipe")?.uniforms, { move: [-1, 0] });
-  assert.deepEqual(resolve("swipe left")?.uniforms, { move: [-1, 0] });
-  assert.deepEqual(resolve("swipe right")?.uniforms, { move: [1, 0] });
-  assert.deepEqual(resolve("slide up")?.uniforms, { move: [0, 1] });
-  assert.deepEqual(resolve("swipe down")?.uniforms, { move: [0, -1] });
-  assert.deepEqual(resolve("swipe sideways")?.uniforms, { move: [-1, 0] });
-  assert.deepEqual(resolve("crossfade whatever")?.uniforms, {});
+  assert.deepEqual(resolve("swipe")?.params, { direction: "left" });
+  assert.deepEqual(resolve("swipe right")?.params, { direction: "right" });
+  assert.deepEqual(resolve("slide up")?.params, { direction: "up" });
+  assert.deepEqual(resolve("swipe sideways")?.params, { direction: "left" });
+  assert.deepEqual(resolve("pixelsort")?.params, { direction: "up" });
+  assert.deepEqual(resolve("pixelsort left")?.params, { direction: "left" });
+  assert.equal(resolve("crossfade whatever")?.params, undefined);
 });
 
-test("frag has the prelude, body and main", () => {
-  const f = buildFrag(resolve("swipe")!.def.frag);
-  assert.ok(f.startsWith("#version 300 es"));
-  assert.match(f, /vec4 readFrom\(vec2 p\)/);
-  assert.match(f, /vec4 transition\(vec2 uv, float t\)/);
-  assert.match(f, /void main\(\)/);
-});
-
-test("effect-based transitions have drivers and parse args", () => {
-  for (const name of ["datamosh", "pixelsort"]) {
-    const def = resolve(name)!.def;
-    assert.equal(typeof def.effects, "function", name);
-    assert.equal(typeof def.prepare, "function", name);
-    assert.equal(typeof def.onFrame, "function", name);
-    assert.equal(typeof def.onEnd, "function", name);
-  }
+test("arg parsers", () => {
   assert.deepEqual(parseDatamoshArgs([]), { blockSize: 32 });
   assert.deepEqual(parseDatamoshArgs(["16"]), { blockSize: 16 });
   assert.deepEqual(parseDatamoshArgs(["big"]), { blockSize: 32 });
   assert.deepEqual(parseDatamoshArgs(["1"]), { blockSize: 32 });
-  assert.deepEqual(parsePixelSortArgs([]), { direction: "up" });
-  assert.deepEqual(parsePixelSortArgs(["left"]), { direction: "left" });
-  assert.deepEqual(parsePixelSortArgs(["sideways"]), { direction: "up" });
+  assert.deepEqual(parseDirection([], "up"), { direction: "up" });
+  assert.deepEqual(parseDirection(["x", "down"], "up"), { direction: "down" });
 });
