@@ -2,7 +2,7 @@
 title: glide demo 2 — every slide is HTML
 css: ./demo2.css
 transition: pixelsort right
-duration: 5
+duration: 2 
 ---
 
 <!-- layout: center -->
@@ -11,10 +11,10 @@ duration: 5
 
 So a slide can hold video, iframes, canvases and its own `<script>`.
 
-This deck tries each kind of content and notes how it fares in three modes:
-**HIC** (Chrome with HTML-in-Canvas), **fallback** (no HIC: dom-to-canvas), and **--no-gpu** (plain DOM).
+This deck tries each kind of content in **Chrome 157+**, **other browsers**, and with **--no-gpu** (no transitions).
+The content works everywhere; the notes say how it looks during a transition.
 
-<p class="result">✅ works · ⚠️ works with a catch · ❌ broken · 🌐 needs network</p>
+<p class="result">✅ looks right · ⚠️ looks wrong mid-transition · 🌐 needs network</p>
 
 ---
 <!-- layout: two-column -->
@@ -29,7 +29,7 @@ This deck tries each kind of content and notes how it fares in three modes:
 
 ![amagi](amagi.jpg)
 
-<p class="result">HIC ✅ · fallback ✅ · --no-gpu ✅</p>
+<p class="result">Chrome 157+ ✅ · other browsers ✅ · --no-gpu ✅</p>
 
 ---
 
@@ -39,7 +39,7 @@ This deck tries each kind of content and notes how it fares in three modes:
 
 <video src="test.mp4" autoplay muted loop playsinline class="center w-60"></video>
 
-<p class="result">HIC ✅ captured, plays, transitions work · fallback ⚠️ parked: plays while idle, a grey box mid-transition (dom-to-canvas) · --no-gpu ✅</p>
+<p class="result">Chrome 157+ ✅ · other browsers ⚠️ grey box mid-transition · --no-gpu ✅</p>
 
 ---
 
@@ -49,7 +49,7 @@ This deck tries each kind of content and notes how it fares in three modes:
 
 <img src="doge.gif" class="center w-30"/>
 
-<p class="result">HIC ✅ keeps moving, transitions work · fallback ⚠️ parked: moves while idle, one frame mid-transition · --no-gpu ✅</p>
+<p class="result">Chrome 157+ ✅ · other browsers ⚠️ one frozen frame mid-transition · --no-gpu ✅</p>
 
 ---
 
@@ -59,7 +59,7 @@ This deck tries each kind of content and notes how it fares in three modes:
 
 <iframe class="center" width="640" height="360" src="https://www.youtube-nocookie.com/embed/aqz-KE-bpKQ?autoplay=1&mute=1" title="Big Buck Bunny" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>
 
-<p class="result">HIC ✅ parked: the player runs as plain DOM while idle and is not reloaded; transitions animate with a black box where the player is · fallback ⚠️ parked, the box shows the slide background mid-transition · --no-gpu ✅</p>
+<p class="result">Chrome 157+ ⚠️ black box mid-transition (cross-origin iframes can't be captured) · other browsers ⚠️ slide background in the box mid-transition · --no-gpu ✅ · the player keeps playing, not reloaded</p>
 
 ---
 
@@ -89,7 +89,7 @@ This deck tries each kind of content and notes how it fares in three modes:
   Glide.onUnmount(() => inst.remove());
 </script>
 
-<p class="result">HIC ✅ in the GPU stage at the right size, transitions show it (vfx-js redraws nested canvases) · fallback ⚠️ parked (blank or approximate mid-transition) · --no-gpu ✅ · loop stops on unmount in all modes</p>
+<p class="result">Chrome 157+ ✅ · other browsers ⚠️ blank mid-transition · --no-gpu ✅ · loop stops on unmount</p>
 
 ---
 
@@ -142,7 +142,7 @@ This deck tries each kind of content and notes how it fares in three modes:
   });
 </script>
 
-<p class="result">HIC ✅ in the GPU stage at the right size, transitions show it · fallback ⚠️ parked (blank or approximate mid-transition) · --no-gpu ✅ · loop stops and context is released on unmount</p>
+<p class="result">Chrome 157+ ✅ · other browsers ⚠️ blank mid-transition · --no-gpu ✅ · loop stops and context is released on unmount</p>
 
 ---
 
@@ -177,7 +177,7 @@ This deck tries each kind of content and notes how it fares in three modes:
   Glide.onUnmount(() => cancelAnimationFrame(raf));
 </script>
 
-<p class="result">HIC ✅ drawn and follows the pointer (Chrome 156 without hit testing: parked, so the pointer reaches it) · fallback ⚠️ parked (blank or approximate mid-transition) · --no-gpu ✅ · clicks on the canvas do not turn the page</p>
+<p class="result">Chrome 157+ ✅ · other browsers ⚠️ blank mid-transition · --no-gpu ✅ · follows the pointer; clicks on the canvas do not turn the page</p>
 
 ---
 
@@ -211,7 +211,7 @@ This deck tries each kind of content and notes how it fares in three modes:
   btn.addEventListener("click", () => { btn.textContent = `clicked ${++n} times`; });
 </script>
 
-<p class="result">HIC ✅ typing, slider drag and button work, keys stay in the control (Chrome 156 without hit testing: parked, works the same; typed text carries into the outgoing transition) · fallback ⚠️ parked (blank or approximate mid-transition) · --no-gpu ✅</p>
+<p class="result">Chrome 157+ ✅ · other browsers ⚠️ blank mid-transition · --no-gpu ✅ · typing, slider and button work; keys stay in the control</p>
 
 ---
 
@@ -230,7 +230,7 @@ This deck tries each kind of content and notes how it fares in three modes:
   <div class="hover-me" data-glide-interactive>hover me</div>
 </div>
 
-<p class="result">HIC ✅ animation and hover (Chrome 156 without hit testing: parked, works the same) · fallback ⚠️ parked (blank or approximate mid-transition) · --no-gpu ✅</p>
+<p class="result">Chrome 157+ ✅ · other browsers ⚠️ blank mid-transition · --no-gpu ✅ · animation and hover work</p>
 
 ---
 
@@ -253,7 +253,7 @@ This deck tries each kind of content and notes how it fares in three modes:
 </svg>
 </div>
 
-<p class="result">HIC ✅ both move · fallback ⚠️ parked (SMIL frozen mid-transition) · --no-gpu ✅</p>
+<p class="result">Chrome 157+ ✅ · other browsers ⚠️ SMIL frozen mid-transition · --no-gpu ✅</p>
 
 ---
 
@@ -272,7 +272,7 @@ This deck tries each kind of content and notes how it fares in three modes:
   s.querySelector("#play").addEventListener("click", () => { a.currentTime = 0; a.play(); });
 </script>
 
-<p class="result">HIC ✅ controls show, play from script works (Chrome 156 without hit testing: parked, works the same) · fallback ⚠️ parked (blank or approximate mid-transition) · --no-gpu ✅</p>
+<p class="result">Chrome 157+ ✅ · other browsers ⚠️ blank mid-transition · --no-gpu ✅ · controls show; play from script works</p>
 
 ---
 
@@ -282,7 +282,7 @@ This deck tries each kind of content and notes how it fares in three modes:
 
 <iframe class="center" src="demo2-frame.html" width="640" height="300" style="border: 0; border-radius: 8px"></iframe>
 
-<p class="result">HIC ✅ captured with its animation; its button works (Chrome 156 without hit testing: parked, works the same) · fallback ⚠️ parked (blank or approximate mid-transition) · --no-gpu ✅</p>
+<p class="result">Chrome 157+ ✅ · other browsers ⚠️ blank mid-transition · --no-gpu ✅ · its animation and button work</p>
 
 ---
 
@@ -299,7 +299,7 @@ A [link to glide](https://github.com/fand/glide) opens in this tab.
 
 <p id="selectable">Drag across this sentence to select it.</p>
 
-<p class="result">HIC ✅ toggle, link and selection work · fallback ⚠️ parked (blank or approximate mid-transition) · --no-gpu ✅</p>
+<p class="result">Chrome 157+ ✅ · other browsers ⚠️ blank mid-transition · --no-gpu ✅ · toggle, link and selection work</p>
 
 ---
 
@@ -311,7 +311,7 @@ A [link to glide](https://github.com/fand/glide) opens in this tab.
 <p>Line 1</p><p>Line 2</p><p>Line 3</p><p>Line 4</p><p>Line 5</p><p>Line 6</p><p>Line 7</p><p>Line 8</p><p>Line 9</p><p>Line 10</p><p>Line 11</p><p>Line 12</p><p>Line 13</p><p>Line 14</p><p>Line 15</p><p>Line 16</p><p>Line 17</p><p>Line 18</p><p>Line 19</p><p>Line 20 (the end)</p>
 </div>
 
-<p class="result">HIC ✅ the box scrolls and re-captures · fallback ⚠️ parked (scroll position kept, but drawn at the top mid-transition) · --no-gpu ✅</p>
+<p class="result">Chrome 157+ ✅ · other browsers ⚠️ drawn scrolled to the top mid-transition · --no-gpu ✅ · the box scrolls</p>
 
 ---
 
@@ -339,7 +339,7 @@ A [link to glide](https://github.com/fand/glide) opens in this tab.
   }
 </script>
 
-<p class="result">HIC ✅ the clock ticks · fallback ⚠️ parked (blank or approximate mid-transition) · --no-gpu ✅</p>
+<p class="result">Chrome 157+ ✅ · other browsers ⚠️ blank mid-transition · --no-gpu ✅ · the clock ticks</p>
 
 ---
 
@@ -374,31 +374,16 @@ A [link to glide](https://github.com/fand/glide) opens in this tab.
   });
 </script>
 
-<p class="result">HIC ✅ in the GPU stage at the right size, transitions show it · fallback ⚠️ parked (blank or approximate mid-transition) · --no-gpu ✅ · loop and context released on unmount</p>
+<p class="result">Chrome 157+ ✅ · other browsers ⚠️ blank mid-transition · --no-gpu ✅ · loop and context released on unmount</p>
 
 ---
 
 ## Summary
 
-<p class="result">HIC with <code>--enable-blink-features=CanvasDrawElement</code>. Chrome 156 sends clicks into the GPU stage only with experimental web platform features ("+hit"); Chrome 159 does without. "parked" = plain DOM while idle (live, interactive), moved into the GPU stage for every transition, so all transitions animate.</p>
+Everything on the slides works in every browser. Only the look **during a transition** differs.
 
-| Content | Chrome 159 | 156 +hit | 156 | fallback | --no-gpu |
-| --- | --- | --- | --- | --- | --- |
-| image | ✅ | ✅ | ✅ | ✅ | ✅ |
-| video | ✅ | ✅ | ✅ | ⚠️ parked | ✅ |
-| GIF | ✅ | ✅ | ✅ | ⚠️ parked | ✅ |
-| YouTube 🌐 | ✅ parked | ✅ parked | ✅ parked | ⚠️ parked | ✅ |
-| p5.js 🌐 | ✅ | ✅ | ✅ parked | ⚠️ parked | ✅ |
-| WebGL2 | ✅ | ✅ | ✅ parked | ⚠️ parked | ✅ |
-| 2D canvas + pointer | ✅ | ✅ | ✅ parked | ⚠️ parked | ✅ |
-| form controls | ✅ | ✅ | ✅ parked | ⚠️ parked | ✅ |
-| CSS animation + hover | ✅ | ✅ | ✅ parked | ⚠️ parked | ✅ |
-| SVG (SMIL, CSS) | ✅ | ✅ | ✅ | ⚠️ parked | ✅ |
-| audio | ✅ | ✅ | ✅ parked | ⚠️ parked | ✅ |
-| same-origin iframe | ✅ | ✅ | ✅ parked | ⚠️ parked | ✅ |
-| details, links, selection | ✅ | ✅ | ✅ parked | ⚠️ parked | ✅ |
-| scroll box | ✅ | ✅ | ✅ parked | ⚠️ parked | ✅ |
-| Web Component | ✅ | ✅ | ✅ parked | ⚠️ parked | ✅ |
-| three.js 🌐 | ✅ | ✅ | ✅ parked | ⚠️ parked | ✅ |
-
-<p class="result">✅ parked: works and animates. ⚠️ parked in the fallback: works while idle, but dom-to-canvas draws video, canvases, iframes and GIFs blank or frozen during the transition.</p>
+| | During a transition |
+| --- | --- |
+| Chrome 157+ | ✅ All content is drawn. Only YouTube (cross-origin iframe) shows a black box. |
+| Other browsers | ⚠️ Video, GIF, canvas and iframes show blank or frozen. |
+| `--no-gpu` | No transitions. |
