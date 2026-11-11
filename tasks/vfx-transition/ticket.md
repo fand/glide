@@ -36,8 +36,9 @@ Guide: `docs/TRANSITION.md` in the vfx-js repo.
 - [x] Custom transitions on `ShaderTransition`
 - [x] Update tests
 - [x] demo2 forward / back with pixelsort in Chrome with HIC: no errors
-- [ ] Check transparent areas with swipe / zoom (deck background shows through)
-- [ ] Check parking in a browser without hit testing (interactive slides, cross-origin iframes)
-- [ ] Check the dom-to-canvas fallback (no HIC)
-- [ ] Check `examples/demo.md` with every built-in and `examples/wipe.frag`
-- [ ] Startup: first run now also wraps the stage, so the first transition may start later
+- [x] Transparent areas: behind the GPU canvas is `#glide` with the deck theme bg. zoom_blur, glitch_slide and swipe on red_white slides show no dark gaps
+- [x] Parking without hit testing (simulated with an `elementFromPoint` patch): interactive slides park, SVG and Summary stay in the GPU stage, transitions out of parked slides animate
+- [x] dom-to-canvas fallback (simulated by deleting `drawElementImage`): all slides but Image and Summary park, transitions animate, no errors
+- [ ] Fallback: the slide's CSS `background-image` is missing mid-transition (dom-to-canvas). Check whether this is new
+- [x] Every built-in and `examples/wipe.frag` run in Chrome 157 with no errors (scratch deck, one slide each)
+- [x] Startup: key to new slide mounted is ~31 ms on the first run vs ~25 ms after, so the wrap adds no visible delay
