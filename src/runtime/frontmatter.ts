@@ -15,6 +15,8 @@ export type Transition = {
   ease?: TransitionEase;
 };
 
+export type PrintSize = { width: number; height: number };
+
 export type Frontmatter = {
   title?: string;
   theme?: string;
@@ -23,6 +25,8 @@ export type Frontmatter = {
   layout?: Layout;
   header: HeaderItem[];
   css?: string;
+  /** Page size in px for print mode (`printSize: 960x540`). Unset = DEFAULT_PRINT_SIZE. */
+  printSize?: PrintSize;
   /** Custom shaders from `transitionDefs`: name -> path, relative to the markdown. */
   shaderFiles: Record<string, string>;
   /** Named transitions from `transitionDefs`, e.g. `melt: { type: pixelsort, ... }`. */
@@ -32,6 +36,7 @@ export type Frontmatter = {
 
 export const DEFAULT_TRANSITION = "swipe";
 export const DEFAULT_DURATION = 0.5;
+export const DEFAULT_PRINT_SIZE: PrintSize = { width: 1280, height: 720 };
 
 const LAYOUTS: Layout[] = ["normal", "center", "two-column"];
 
@@ -92,6 +97,17 @@ export function parseTransitionBlock(entries: [string, string][]): Transition | 
 
 export function parseLayout(s: string): Layout | undefined {
   return (LAYOUTS as string[]).includes(s) ? (s as Layout) : undefined;
+}
+
+/** `960x540` -> `{ width: 960, height: 540 }`; undefined if invalid. */
+export function parsePrintSize(s: string): PrintSize | undefined {
+  const m = s.trim().match(/^(\d+)\s*x\s*(\d+)$/i);
+  if (!m) {
+    return undefined;
+  }
+  const width = Number(m[1]);
+  const height = Number(m[2]);
+  return width > 0 && height > 0 ? { width, height } : undefined;
 }
 
 export function parseNumber(s: string): number | undefined {
@@ -208,6 +224,13 @@ export function parseFrontmatter(md: string): { meta: Frontmatter; body: string 
         break;
       case "css":
         meta.css = value || undefined;
+        break;
+      case "printSize":
+      case "print_size":
+        meta.printSize = parsePrintSize(value);
+        if (!meta.printSize) {
+          console.warn(`glide: bad printSize "${value}"; using the default.`);
+        }
         break;
       case "transitionDefs":
         // Only the nested map form is supported; a scalar is ignored.

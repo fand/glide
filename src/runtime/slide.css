@@ -210,23 +210,27 @@ body {
   font-size: 0.6rem;
 }
 
-#overlay .header {
+#overlay .header,
+.print-overlay .header {
   position: absolute;
   top: 0.8rem;
   right: 1rem;
   display: flex;
   gap: 1rem;
 }
-#overlay .header a {
+#overlay .header a,
+.print-overlay .header a {
   color: inherit;
   text-decoration: none;
   pointer-events: auto;
 }
-#overlay .header a:hover {
+#overlay .header a:hover,
+.print-overlay .header a:hover {
   color: var(--fg);
 }
 
-#overlay .counter {
+#overlay .counter,
+.print-overlay .counter {
   position: absolute;
   right: 1rem;
   bottom: 0.8rem;
@@ -281,4 +285,51 @@ body {
 /* Cross-origin iframes are captured blank during transitions; make that black. */
 .slide iframe[data-glide-xo] {
   background: #000;
+}
+
+/* Print mode (`?print`): slides stacked as fixed-size pages.
+   Page size and root font size come from a style set by deck.ts. */
+
+html.glide-print {
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+html.glide-print,
+html.glide-print body {
+  overflow: visible;
+}
+
+#glide.glide-print {
+  position: static;
+  overflow: visible;
+  touch-action: auto;
+}
+
+.print-page {
+  position: relative;
+  overflow: hidden;
+  /* Without this, Chrome splits a tall (scaled-down) slide across pages. */
+  contain: strict;
+  break-after: page;
+}
+.print-page:last-child {
+  break-after: auto;
+}
+@media screen {
+  .print-page + .print-page {
+    margin-top: 1rem;
+  }
+}
+
+.print-page .slide {
+  overflow: hidden;
+  transform-origin: 0 0;
+}
+
+.print-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  color: var(--muted);
+  font-size: 0.6rem;
 }

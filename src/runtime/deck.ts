@@ -6,6 +6,7 @@ import hljsCss from "highlight.js/styles/github-dark.css?inline";
 import { attachTransitions, type Transitions } from "./stage.ts";
 import { customTransitions } from "./transitions/custom.ts";
 import { mountScripts, unmountScripts } from "./scripts.ts";
+import { DEFAULT_PRINT_SIZE, type Frontmatter } from "./frontmatter.ts";
 
 export const DEFAULT_THEME = "mocha";
 
@@ -25,6 +26,12 @@ export type RunOpts = {
    * `vec4 transition(vec2 uv, float t)`. They shadow built-ins of the same name.
    */
   shaders?: Record<string, string>;
+  /**
+   * Print mode: stack every slide as a page for printing / PDF export.
+   * No transitions, input handlers or slide scripts. Default: true if the
+   * URL has `?print`.
+   */
+  print?: boolean;
 };
 
 export type Direction = 1 | -1;
@@ -222,6 +229,117 @@ function readHash(): number | null {
   return m ? Number(m[1]) - 1 : null;
 }
 
+/**
+ * Shrink the whole section with `transform: scale()` until it fits its page.
+ * The box grows by 1/scale first, so the scaled result fills the page.
+ */
+function fitPage(section: HTMLElement, w: number, h: number): void {
+  section.style.removeProperty("width");
+  section.style.removeProperty("height");
+  section.style.removeProperty("transform");
+  fitCode(section);
+  let scale = 1;
+  for (let k = 0; k < 4 && section.scrollHeight > section.clientHeight + 1; k++) {
+    scale *= section.clientHeight / section.scrollHeight;
+    section.style.width = `${w / scale}px`;
+    section.style.height = `${h / scale}px`;
+    section.style.transform = `scale(${scale})`;
+  }
+}
+
+type PrintArgs = {
+  meta: Frontmatter;
+  slides: Slide[];
+  root: HTMLElement;
+  deckTheme: string;
+  cssLink: HTMLLinkElement | null;
+  buildSection: (i: number) => HTMLElement;
+  buildHeader: () => HTMLElement;
+};
+
+/** Print mode: every slide as one fixed-size page, stacked. */
+function runPrint(a: PrintArgs): Deck {
+  const { width: w, height: h } = a.meta.printSize ?? DEFAULT_PRINT_SIZE;
+  // Same formula as `html { font-size }` in slide.css, but for the page size.
+  const fontSize = Math.min(w * 0.022, h * 0.039);
+
+  const style = el("style", { id: "glide-print-style" });
+  style.textContent = `@page { size: ${w}px ${h}px; margin: 0; }
+html { font-size: ${fontSize}px; }
+.print-page { width: ${w}px; height: ${h}px; }
+.print-page .slide :is(img, video) { max-height: ${h * 0.6}px; }`;
+  document.head.appendChild(style);
+  document.documentElement.classList.add("glide-print");
+
+  const glide = el("div", { id: "glide", class: `glide-print theme-${a.deckTheme}` });
+  const sections: HTMLElement[] = [];
+  a.slides.forEach((s, i) => {
+    const page = el("div", { class: "print-page" });
+    const section = a.buildSection(i);
+    const overlay = el("div", { class: `print-overlay theme-${s.theme ?? a.deckTheme}` });
+    if (a.meta.header.length > 0) {
+      overlay.appendChild(a.buildHeader());
+    }
+    const counter = el("div", { class: "counter" });
+    counter.textContent = `${i + 1} / ${a.slides.length}`;
+    overlay.appendChild(counter);
+    page.append(section, overlay);
+    glide.appendChild(page);
+    sections.push(section);
+  });
+  a.root.appendChild(glide);
+
+  const fitAll = () => sections.forEach((s) => fitPage(s, w, h));
+  fitAll();
+
+  const waits: Promise<unknown>[] = [document.fonts.ready];
+  for (const img of glide.querySelectorAll("img")) {
+    img.loading = "eager";
+    waits.push(img.decode());
+  }
+  const link = a.cssLink;
+  if (link && !link.sheet) {
+    waits.push(
+      new Promise((res) => {
+        link.addEventListener("load", res, { once: true });
+        link.addEventListener("error", res, { once: true });
+      }),
+    );
+  }
+  let destroyed = false;
+  void Promise.allSettled(waits).then(() => {
+    if (destroyed) {
+      return;
+    }
+    fitAll();
+    document.documentElement.dataset.glideReady = "1";
+  });
+
+  const noop = () => {};
+  return {
+    meta: a.meta,
+    slides: a.slides,
+    el: glide,
+    stage: glide,
+    current: 0,
+    length: a.slides.length,
+    next: noop,
+    prev: noop,
+    goto: noop,
+    setSwapHandler: noop,
+    setPlainDom: noop,
+    domLayer: el("div"),
+    destroy() {
+      destroyed = true;
+      glide.remove();
+      style.remove();
+      link?.remove();
+      document.documentElement.classList.remove("glide-print");
+      delete document.documentElement.dataset.glideReady;
+    },
+  };
+}
+
 export function run(md: string, opts: RunOpts = {}): Deck {
   const { meta, slides } = parse(md);
   const root = opts.root ?? document.body;
@@ -250,40 +368,6 @@ export function run(md: string, opts: RunOpts = {}): Deck {
     };
   });
 
-  const glide = el("div", { id: "glide", class: `theme-${deckTheme}` });
-  const stage = el("div", { id: "stage" });
-  const domLayer = el("div", { id: "stage-dom" });
-  const overlay = el("div", { id: "overlay", class: `theme-${deckTheme}` });
-  const header = el("div", { class: "header" });
-  const counter = el("div", { class: "counter" });
-
-  for (const item of meta.header) {
-    const node = item.url
-      ? el("a", { href: item.url, target: "_blank", rel: "noopener" })
-      : el("span");
-    node.textContent = item.text;
-    header.appendChild(node);
-  }
-  if (meta.header.length > 0) {
-    overlay.appendChild(header);
-  }
-  overlay.appendChild(counter);
-  const help = el("div", { id: "glide-help", role: "dialog", "aria-label": "Keyboard shortcuts" });
-  help.innerHTML = HELP_HTML;
-  help.hidden = true;
-  glide.append(stage, domLayer, overlay, help);
-  root.appendChild(glide);
-
-  const preloaded = new Set<string>();
-  function preload(i: number): void {
-    for (const src of rendered[i]?.images ?? []) {
-      if (!preloaded.has(src)) {
-        preloaded.add(src);
-        new Image().src = src;
-      }
-    }
-  }
-
   function buildSection(i: number): HTMLElement {
     const s: Slide = slides[i];
     const r = rendered[i];
@@ -302,6 +386,49 @@ export function run(md: string, opts: RunOpts = {}): Deck {
       section.innerHTML = r.html;
     }
     return section;
+  }
+
+  function buildHeader(): HTMLElement {
+    const header = el("div", { class: "header" });
+    for (const item of meta.header) {
+      const node = item.url
+        ? el("a", { href: item.url, target: "_blank", rel: "noopener" })
+        : el("span");
+      node.textContent = item.text;
+      header.appendChild(node);
+    }
+    return header;
+  }
+
+  const print = opts.print ?? new URLSearchParams(location.search).has("print");
+  if (print) {
+    return runPrint({ meta, slides, root, deckTheme, cssLink, buildSection, buildHeader });
+  }
+
+  const glide = el("div", { id: "glide", class: `theme-${deckTheme}` });
+  const stage = el("div", { id: "stage" });
+  const domLayer = el("div", { id: "stage-dom" });
+  const overlay = el("div", { id: "overlay", class: `theme-${deckTheme}` });
+  const counter = el("div", { class: "counter" });
+
+  if (meta.header.length > 0) {
+    overlay.appendChild(buildHeader());
+  }
+  overlay.appendChild(counter);
+  const help = el("div", { id: "glide-help", role: "dialog", "aria-label": "Keyboard shortcuts" });
+  help.innerHTML = HELP_HTML;
+  help.hidden = true;
+  glide.append(stage, domLayer, overlay, help);
+  root.appendChild(glide);
+
+  const preloaded = new Set<string>();
+  function preload(i: number): void {
+    for (const src of rendered[i]?.images ?? []) {
+      if (!preloaded.has(src)) {
+        preloaded.add(src);
+        new Image().src = src;
+      }
+    }
   }
 
   let current = -1;
