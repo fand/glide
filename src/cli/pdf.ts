@@ -141,12 +141,19 @@ export async function exportPdf(opts: PdfOpts): Promise<string> {
     (cleaned ??= (async () => {
       if (chrome && chrome.exitCode === null && chrome.signalCode === null) {
         const exited = new Promise((r) => chrome?.once("exit", r));
-        chrome.kill();
-        await Promise.race([exited, sleep(3000)]);
+        // Browser.close may already be shutting it down; give it a moment first.
+        if (!(await Promise.race([exited.then(() => true), sleep(1000).then(() => false)]))) {
+          chrome.kill();
+          await Promise.race([exited, sleep(3000)]);
+        }
       }
       await server?.close();
       if (tmp) {
-        fs.rmSync(tmp, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
+        // Chrome helper processes can still write to the profile for a moment
+        // after the main process exits. A leftover temp dir is not worth failing over.
+        try {
+          fs.rmSync(tmp, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
+        } catch {}
       }
     })());
   const onSignal = () => {
