@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import http from "node:http";
+import net from "node:net";
 import path from "node:path";
 import { spawn } from "node:child_process";
 import { watch } from "chokidar";
@@ -181,25 +182,52 @@ export async function serve(opts: ServeOpts): Promise<void> {
   process.once("SIGTERM", shutdown);
 }
 
-/** Listen on `port`, trying the next ports if it is taken. */
-function listen(server: http.Server, port: number, host: string): Promise<number> {
-  return new Promise((resolve, reject) => {
-    let tries = 0;
-    const attempt = (p: number) => {
-      const onError = (e: NodeJS.ErrnoException) => {
-        if (e.code === "EADDRINUSE" && tries++ < 10) {
-          console.log(`port ${p} is in use, trying ${p + 1}`);
-          attempt(p + 1);
-        } else {
-          reject(e);
-        }
-      };
-      server.once("error", onError);
-      server.listen(p, host, () => {
-        server.off("error", onError);
-        resolve(p);
-      });
-    };
-    attempt(port);
+/** True if something already accepts connections on `port` at `host`. */
+function isTaken(port: number, host: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    const sock = net.connect({ port, host });
+    sock.setTimeout(500);
+    sock.once("connect", () => {
+      sock.destroy();
+      resolve(true);
+    });
+    sock.once("timeout", () => {
+      sock.destroy();
+      resolve(false);
+    });
+    sock.once("error", () => resolve(false));
   });
+}
+
+/**
+ * Listen on `port`, trying the next ports if it is taken.
+ * Bind errors alone miss servers on other addresses (e.g. `*:3000` on IPv6
+ * still lets us bind 127.0.0.1:3000), so probe loopback first.
+ */
+async function listen(server: http.Server, port: number, host: string): Promise<number> {
+  for (let p = port; p < port + 20; p++) {
+    if (port !== 0) {
+      const taken = await Promise.all([isTaken(p, "127.0.0.1"), isTaken(p, "::1")]);
+      if (taken.some(Boolean)) {
+        console.log(`port ${p} is in use, trying ${p + 1}`);
+        continue;
+      }
+    }
+    try {
+      return await new Promise<number>((resolve, reject) => {
+        server.once("error", reject);
+        server.listen(p, host, () => {
+          server.off("error", reject);
+          const addr = server.address();
+          resolve(typeof addr === "object" && addr ? addr.port : p);
+        });
+      });
+    } catch (e) {
+      if ((e as NodeJS.ErrnoException).code !== "EADDRINUSE" || port === 0) {
+        throw e;
+      }
+      console.log(`port ${p} is in use, trying ${p + 1}`);
+    }
+  }
+  throw new Error(`no free port in ${port}-${port + 19}`);
 }
