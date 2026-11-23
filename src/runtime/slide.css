@@ -17,6 +17,11 @@ body {
   overflow: hidden;
   /* Horizontal swipes are ours (page turns); vertical pans scroll natively. */
   touch-action: pan-y;
+}
+
+/* #glide-print is the print view (see below). */
+#glide,
+#glide-print {
   font-family: Inter, Avenir, "Helvetica Neue", Helvetica, Arial,
     "Hiragino Sans", "Noto Sans JP", sans-serif;
   line-height: 1.5;
@@ -287,7 +292,7 @@ body {
   background: #000;
 }
 
-/* Print mode (`?print`): slides stacked as fixed-size pages.
+/* Print view (`?print`, or while printing): slides stacked as fixed-size pages.
    Page size and root font size come from a style set by deck.ts. */
 
 html.glide-print {
@@ -299,10 +304,10 @@ html.glide-print body {
   overflow: visible;
 }
 
-#glide.glide-print {
-  position: static;
-  overflow: visible;
-  touch-action: auto;
+/* Hide the live deck while the print view is up (Cmd+P). `visibility` keeps
+   its layout, scroll positions and running scripts as they are. */
+html.glide-print #glide {
+  visibility: hidden;
 }
 
 .print-page {

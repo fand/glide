@@ -52,7 +52,9 @@ printSize: 960x540
 ---
 ```
 
-You can also open the deck with `?print` in the URL (e.g. `http://localhost:3000/?print`) and use the browser's Print dialog. That view stacks all slides as pages.
+To print from the browser, press `⌘P` / `Ctrl+P` in the deck. glide swaps in the print view (every slide as a page), waits for images and fonts, then opens the Print dialog. The deck comes back on the same slide afterwards. File > Print in the menu also works, but images that have not loaded yet may be missing; use the key or `?print` instead.
+
+You can also open the deck with `?print` in the URL (e.g. `http://localhost:3000/?print`). That view stacks all slides as pages.
 
 Limits of print mode:
 
@@ -131,6 +133,7 @@ header:
 - Touch: swipe left / right to go forward / back; tap the right / left side like a click. A vertical swipe scrolls a tall slide. A touch that moves more than 10 px is not a tap.
 - `f`: fullscreen (`Esc` exits)
 - `?`: show the keys; any key or click closes it
+- `⌘P` / `Ctrl+P`: print all slides, one per page (see [PDF export](#pdf-export)). Works even while a text field has focus.
 - Clicks on links, form controls, `canvas`, `video`, `audio`, `iframe`, `summary`, `label`, elements with `tabindex`, and anything inside `[data-glide-interactive]` do not turn the page, by click, tap or swipe. Neither does a drag (text selection, slider).
 - Keys go to a focused text field, slider or select, and `Space` / `Enter` to a focused button or link. Press `Esc` to give the keys back to the deck. Inside `[data-glide-interactive]`, the deck ignores all keys.
 

@@ -156,6 +156,7 @@ const HELP_HTML = `<div class="panel">
 <dt>Home / End</dt><dd>First / last slide</dd>
 <dt>↓ j / ↑ k</dt><dd>Scroll a tall slide</dd>
 <dt>f</dt><dd>Fullscreen</dd>
+<dt>⌘P / Ctrl+P</dt><dd>Print all slides</dd>
 <dt>?</dt><dd>This help</dd>
 <dt>Esc</dt><dd>Leave a focused control, exit fullscreen</dd>
 </dl>
@@ -257,21 +258,33 @@ type PrintArgs = {
   buildHeader: () => HTMLElement;
 };
 
-/** Print mode: every slide as one fixed-size page, stacked. */
-function runPrint(a: PrintArgs): Deck {
+type PrintView = {
+  el: HTMLElement;
+  /** Resolves when images, fonts and the deck css have settled and pages are fitted. */
+  ready: Promise<void>;
+  destroy(): void;
+};
+
+/**
+ * Mount every slide as one fixed-size page, stacked, into `a.root`.
+ * While mounted, `html.glide-print` hides a live deck (#glide) in the same page.
+ */
+function mountPrintView(a: PrintArgs): PrintView {
   const { width: w, height: h } = a.meta.printSize ?? DEFAULT_PRINT_SIZE;
   // Same formula as `html { font-size }` in slide.css, but for the page size.
   const fontSize = Math.min(w * 0.022, h * 0.039);
+  const html = document.documentElement;
+  const scroll = { x: window.scrollX, y: window.scrollY };
 
   const style = el("style", { id: "glide-print-style" });
   style.textContent = `@page { size: ${w}px ${h}px; margin: 0; }
-html { font-size: ${fontSize}px; }
+html.glide-print { font-size: ${fontSize}px; }
 .print-page { width: ${w}px; height: ${h}px; }
 .print-page .slide :is(img, video) { max-height: ${h * 0.6}px; }`;
   document.head.appendChild(style);
-  document.documentElement.classList.add("glide-print");
+  html.classList.add("glide-print");
 
-  const glide = el("div", { id: "glide", class: `glide-print theme-${a.deckTheme}` });
+  const view = el("div", { id: "glide-print", class: `theme-${a.deckTheme}` });
   const sections: HTMLElement[] = [];
   a.slides.forEach((s, i) => {
     const page = el("div", { class: "print-page" });
@@ -284,16 +297,16 @@ html { font-size: ${fontSize}px; }
     counter.textContent = `${i + 1} / ${a.slides.length}`;
     overlay.appendChild(counter);
     page.append(section, overlay);
-    glide.appendChild(page);
+    view.appendChild(page);
     sections.push(section);
   });
-  a.root.appendChild(glide);
+  a.root.appendChild(view);
 
   const fitAll = () => sections.forEach((s) => fitPage(s, w, h));
   fitAll();
 
   const waits: Promise<unknown>[] = [document.fonts.ready];
-  for (const img of glide.querySelectorAll("img")) {
+  for (const img of view.querySelectorAll("img")) {
     img.loading = "eager";
     waits.push(img.decode());
   }
@@ -307,20 +320,41 @@ html { font-size: ${fontSize}px; }
     );
   }
   let destroyed = false;
-  void Promise.allSettled(waits).then(() => {
-    if (destroyed) {
-      return;
+  const ready = Promise.allSettled(waits).then(() => {
+    if (!destroyed) {
+      fitAll();
     }
-    fitAll();
-    document.documentElement.dataset.glideReady = "1";
+  });
+
+  return {
+    el: view,
+    ready,
+    destroy() {
+      destroyed = true;
+      view.remove();
+      style.remove();
+      html.classList.remove("glide-print");
+      window.scrollTo(scroll.x, scroll.y);
+    },
+  };
+}
+
+/** Print mode (`?print`): only the print view, no live deck. */
+function runPrint(a: PrintArgs): Deck {
+  const view = mountPrintView(a);
+  let destroyed = false;
+  void view.ready.then(() => {
+    if (!destroyed) {
+      document.documentElement.dataset.glideReady = "1";
+    }
   });
 
   const noop = () => {};
   return {
     meta: a.meta,
     slides: a.slides,
-    el: glide,
-    stage: glide,
+    el: view.el,
+    stage: view.el,
     current: 0,
     length: a.slides.length,
     next: noop,
@@ -331,10 +365,8 @@ html { font-size: ${fontSize}px; }
     domLayer: el("div"),
     destroy() {
       destroyed = true;
-      glide.remove();
-      style.remove();
-      link?.remove();
-      document.documentElement.classList.remove("glide-print");
+      view.destroy();
+      a.cssLink?.remove();
       delete document.documentElement.dataset.glideReady;
     },
   };
@@ -400,9 +432,10 @@ export function run(md: string, opts: RunOpts = {}): Deck {
     return header;
   }
 
+  const printArgs: PrintArgs = { meta, slides, root, deckTheme, cssLink, buildSection, buildHeader };
   const print = opts.print ?? new URLSearchParams(location.search).has("print");
   if (print) {
-    return runPrint({ meta, slides, root, deckTheme, cssLink, buildSection, buildHeader });
+    return runPrint(printArgs);
   }
 
   const glide = el("div", { id: "glide", class: `theme-${deckTheme}` });
@@ -692,6 +725,40 @@ export function run(md: string, opts: RunOpts = {}): Deck {
     }
   }
 
+  // Print all slides, not just the screen: swap in the print view while printing.
+  // The live deck stays mounted (only hidden), so its slide, scripts and video keep their state.
+  let printView: PrintView | null = null;
+  function hidePrintView(): void {
+    printView?.destroy();
+    printView = null;
+  }
+  function onPrintKey(e: KeyboardEvent): void {
+    if (!(e.metaKey || e.ctrlKey) || e.shiftKey || e.altKey || e.key.toLowerCase() !== "p") {
+      return;
+    }
+    e.preventDefault();
+    if (printView) {
+      // Already preparing or printing.
+      return;
+    }
+    const view = mountPrintView(printArgs);
+    printView = view;
+    void view.ready.then(() => {
+      if (printView === view) {
+        window.print();
+      }
+    });
+  }
+  // File > Print from the menu: build the view right away. Images that have
+  // not loaded yet may be missing.
+  function onBeforePrint(): void {
+    printView ??= mountPrintView(printArgs);
+  }
+
+  // Capture, so this runs before slide handlers and focused fields.
+  window.addEventListener("keydown", onPrintKey, { capture: true });
+  window.addEventListener("beforeprint", onBeforePrint);
+  window.addEventListener("afterprint", hidePrintView);
   window.addEventListener("keydown", onKey);
   window.addEventListener("resize", onResize);
   glide.addEventListener("pointerdown", onPointerDown);
@@ -742,6 +809,10 @@ export function run(md: string, opts: RunOpts = {}): Deck {
         unmountScripts(mounted);
       }
       transitions?.destroy();
+      window.removeEventListener("keydown", onPrintKey, { capture: true });
+      window.removeEventListener("beforeprint", onBeforePrint);
+      window.removeEventListener("afterprint", hidePrintView);
+      hidePrintView();
       window.removeEventListener("keydown", onKey);
       window.removeEventListener("resize", onResize);
       window.removeEventListener("hashchange", onHashChange);
