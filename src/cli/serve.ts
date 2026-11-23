@@ -86,7 +86,20 @@ export async function resolveStatic(root: string, urlPath: string): Promise<stri
   }
 }
 
-export async function serve(opts: ServeOpts): Promise<void> {
+export type ServerOpts = {
+  file: string;
+  port: number;
+  host: boolean;
+  theme?: string;
+  transitions?: boolean;
+  /** Watch files and reload the page on change. */
+  liveReload: boolean;
+};
+
+export type Server = { port: number; close(): Promise<void> };
+
+/** Serve the deck and the files next to it. */
+export async function startServer(opts: ServerOpts): Promise<Server> {
   const mdPath = path.resolve(opts.file);
   const root = await fs.promises.realpath(path.dirname(mdPath));
   const runtime = runtimePath();
@@ -106,7 +119,7 @@ export async function serve(opts: ServeOpts): Promise<void> {
             theme: opts.theme,
             transitions: opts.transitions,
             shaders,
-            liveReload: true,
+            liveReload: opts.liveReload,
           }), MIME[".html"]);
         return;
       }
@@ -114,7 +127,7 @@ export async function serve(opts: ServeOpts): Promise<void> {
         send(res, 200, await fs.promises.readFile(runtime), MIME[".js"]);
         return;
       }
-      if (p === "/__events") {
+      if (p === "/__events" && opts.liveReload) {
         res.writeHead(200, {
           "Content-Type": "text/event-stream",
           "Cache-Control": "no-cache",
@@ -138,44 +151,60 @@ export async function serve(opts: ServeOpts): Promise<void> {
     }
   });
 
-  // Keep SSE connections alive through proxies.
-  const ping = setInterval(() => {
-    for (const c of clients) {
-      c.write(": ping\n\n");
-    }
-  }, 30_000);
-  ping.unref();
-
-  let timer: NodeJS.Timeout | undefined;
-  const watcher = watch(root, {
-    ignoreInitial: true,
-    ignored: (p) => path.relative(root, p).split(path.sep).some((s) => IGNORED_DIRS.has(s)),
-  });
-  watcher.on("all", (_event, changed) => {
-    clearTimeout(timer);
-    timer = setTimeout(() => {
-      console.log(`changed: ${path.relative(root, changed) || changed}`);
+  let ping: NodeJS.Timeout | undefined;
+  let watcher: ReturnType<typeof watch> | undefined;
+  if (opts.liveReload) {
+    // Keep SSE connections alive through proxies.
+    ping = setInterval(() => {
       for (const c of clients) {
-        c.write("data: reload\n\n");
+        c.write(": ping\n\n");
       }
-    }, 100);
-  });
+    }, 30_000);
+    ping.unref();
+
+    let timer: NodeJS.Timeout | undefined;
+    watcher = watch(root, {
+      ignoreInitial: true,
+      ignored: (p) => path.relative(root, p).split(path.sep).some((s) => IGNORED_DIRS.has(s)),
+    });
+    watcher.on("all", (_event, changed) => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        console.log(`changed: ${path.relative(root, changed) || changed}`);
+        for (const c of clients) {
+          c.write("data: reload\n\n");
+        }
+      }, 100);
+    });
+  }
 
   const hostname = opts.host ? "0.0.0.0" : "127.0.0.1";
   const port = await listen(server, opts.port, hostname);
-  const url = `http://localhost:${port}/`;
-  console.log(`glide: serving ${path.relative(process.cwd(), mdPath) || mdPath} at ${url}`);
+
+  return {
+    port,
+    async close() {
+      clearInterval(ping);
+      await watcher?.close();
+      for (const c of clients) {
+        c.end();
+      }
+      server.closeAllConnections();
+      await new Promise((r) => server.close(r));
+    },
+  };
+}
+
+export async function serve(opts: ServeOpts): Promise<void> {
+  const server = await startServer({ ...opts, liveReload: true });
+  const url = `http://localhost:${server.port}/`;
+  console.log(`glide: serving ${path.relative(process.cwd(), path.resolve(opts.file)) || opts.file} at ${url}`);
   if (opts.open) {
     openBrowser(url);
   }
 
   const shutdown = () => {
-    clearInterval(ping);
-    void watcher.close();
-    for (const c of clients) {
-      c.end();
-    }
-    server.close();
+    void server.close();
     process.exit(0);
   };
   process.once("SIGINT", shutdown);

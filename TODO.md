@@ -10,7 +10,7 @@
 - [ ] Speaker notes syntax (e.g. everything after `<!-- notes -->` in a slide).
 - [ ] Presenter view: `/presenter` with the next slide, notes and a timer, kept in sync with the main window (`BroadcastChannel`).
 - [ ] Transitions over `file://`: inline assets as data URLs in `glide build` (e.g. `--inline`).
-- [ ] PDF export (optional).
+- [x] PDF export (optional).
 
 ## Quality
 

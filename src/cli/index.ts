@@ -1,7 +1,9 @@
 import { parseArgs } from "node:util";
 import fs from "node:fs";
+import path from "node:path";
 import { serve } from "./serve.ts";
 import { build } from "./build.ts";
+import { exportPdf } from "./pdf.ts";
 import { readVersion } from "./paths.ts";
 
 const HELP = `glide - Markdown slideshow
@@ -9,6 +11,8 @@ const HELP = `glide - Markdown slideshow
 Usage:
   glide <file.md> [options]            Start a dev server with live reload
   glide build [-o DIR] <file.md>       Export static HTML to DIR (default: ./out)
+  glide pdf [-o FILE] <file.md>        Export a PDF with headless Chrome
+                                       (default: ./<name>.pdf)
 
 Options:
   -p, --port <n>       Dev server port (default: 3000)
@@ -16,7 +20,9 @@ Options:
       --no-open        Do not open the browser
       --no-gpu         Turn off WebGL transitions
   -t, --theme <name>   Theme (overrides the frontmatter)
-  -o, --out <dir>      Output dir for build (default: ./out)
+  -o, --out <path>     Output dir for build, or file for pdf
+      --chrome <path>  Chrome binary for pdf (default: CHROME_PATH, then
+                       common install paths)
       --export <dir>   Same as \`glide build -o <dir>\`
   -h, --help           Show this help
   -v, --version        Show version
@@ -41,6 +47,7 @@ async function main(): Promise<void> {
         theme: { type: "string", short: "t" },
         out: { type: "string", short: "o" },
         export: { type: "string" },
+        chrome: { type: "string" },
         help: { type: "boolean", short: "h" },
         version: { type: "boolean", short: "v" },
       },
@@ -60,13 +67,32 @@ async function main(): Promise<void> {
   }
 
   const isBuild = positionals[0] === "build";
-  const args = isBuild ? positionals.slice(1) : positionals;
+  const isPdf = positionals[0] === "pdf";
+  const args = isBuild || isPdf ? positionals.slice(1) : positionals;
   if (args.length !== 1) {
     fail(args.length === 0 ? "missing markdown file" : "too many arguments");
   }
   const file = args[0];
   if (!fs.existsSync(file)) {
     fail(`file not found: ${file}`);
+  }
+
+  if (isPdf) {
+    try {
+      const out = await exportPdf({
+        file,
+        out: values.out,
+        theme: values.theme,
+        transitions: !values["no-gpu"],
+        chrome: values.chrome,
+      });
+      const rel = path.relative(process.cwd(), out);
+      console.log(`glide: wrote ${rel.startsWith("..") ? out : rel}`);
+    } catch (e) {
+      console.error(`glide: ${(e as Error).message}`);
+      process.exit(1);
+    }
+    return;
   }
 
   if (isBuild || values.export !== undefined) {

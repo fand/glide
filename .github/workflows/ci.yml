@@ -17,8 +17,9 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
-      - run: pnpm test
+      # Build first: the `glide pdf` test runs dist/cli.js.
       - run: pnpm build
+      - run: pnpm test
       - uses: actions/upload-artifact@v4
         with:
           name: dist

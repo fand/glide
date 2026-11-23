@@ -23,6 +23,7 @@ Requirements:
 ```
 $ glide slide.md                 # dev server with live reload (opens the browser)
 $ glide build -o out slide.md    # static HTML in ./out
+$ glide pdf slide.md             # PDF in ./slide.pdf (needs Chrome)
 ```
 
 Options:
@@ -32,11 +33,33 @@ Options:
 - `--no-open`: do not open the browser
 - `--no-gpu`: turn off WebGL transitions
 - `-t, --theme <name>`: theme (beats the frontmatter)
-- `-o, --out <dir>`: build output dir (default `./out`)
+- `-o, --out <path>`: build output dir (default `./out`), or the PDF file for `glide pdf` (default `./<name>.pdf`)
+- `--chrome <path>`: Chrome binary for `glide pdf`
 - `--export <dir>`: same as `glide build -o <dir>`
 
 The build output is self-contained (`index.html`, `glide.js`, `assets/`). It copies local files that the slides load (`img`, `video`, `audio`, `source`, `track`, `script`, `iframe`, `link`, `embed`, `object`, markdown images) into `assets/`. A copied HTML page (iframe) keeps its own relative links, so those files must be referenced from the markdown too or kept next to it by hand.
 It opens from `file://`, but without transitions (browsers treat each local file as cross-origin, so the canvas capture drops images). Serve the folder over http to get transitions.
+
+### PDF export
+
+`glide pdf slide.md` prints every slide as one page with headless Chrome (or Chromium / Edge). It looks for Chrome at `--chrome <path>`, then `CHROME_PATH`, then the usual install paths.
+
+The page size comes from the `printSize` frontmatter (alias `print_size`), in px. Default `1280x720`.
+
+```yaml
+---
+printSize: 960x540
+---
+```
+
+You can also open the deck with `?print` in the URL (e.g. `http://localhost:3000/?print`) and use the browser's Print dialog. That view stacks all slides as pages.
+
+Limits of print mode:
+
+- Slide `<script>`s do not run, so canvases drawn by scripts are blank.
+- Videos show their poster or first frame.
+- No transitions.
+- A slide taller than the page is scaled down to fit.
 
 ### As a library
 
@@ -84,7 +107,7 @@ header:
 ```
 
 - Slides split on `---` lines (ignored inside code fences).
-- Frontmatter keys: `title`, `theme`, `transition`, `duration` (seconds), `layout`, `css` (extra stylesheet, relative to the md), `header` (items shown at the top right), `transitions` (custom shaders, see [Custom transitions](#custom-transitions)).
+- Frontmatter keys: `title`, `theme`, `transition`, `duration` (seconds), `layout`, `css` (extra stylesheet, relative to the md), `header` (items shown at the top right), `printSize` (PDF page size, e.g. `960x540`), `transitions` (custom shaders, see [Custom transitions](#custom-transitions)).
 - Per-slide directives at the top of a slide: `<!-- transition: NAME ARGS -->`, `<!-- duration: N -->`, `<!-- layout: ... -->`, `<!-- theme: ... -->`, `<!-- live -->`, `<!-- gpu: false -->`. They override the frontmatter.
 - `|||` splits a `two-column` slide into left and right.
 - Raw HTML works, e.g. `<img src="cat.gif" class="center w-60">`. Utility classes: `center`, `w-20` `w-30` `w-40` `w-60` `w-70` `w-80` `w-100`.
