@@ -26,7 +26,7 @@
     "build": "pnpm run build:runtime && pnpm run build:types && pnpm run build:cli",
     "build:runtime": "vite build",
     "build:types": "tsc -p tsconfig.types.json && node scripts/fix-types.js",
-    "build:cli": "esbuild src/cli/index.ts --bundle --platform=node --format=esm --target=node20 --packages=external --banner:js='#!/usr/bin/env node' --outfile=dist/cli.js",
+    "build:cli": "esbuild src/cli/index.ts --bundle --platform=node --format=esm --target=node20 --packages=external --banner:js='#!/usr/bin/env node' --outfile=dist/cli.js && node -e \"require('fs').chmodSync('dist/cli.js', 0o755)\"",
     "start": "node scripts/start.js",
     "dev": "vite",
     "typecheck": "tsc --noEmit",
