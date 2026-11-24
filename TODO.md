@@ -1,9 +1,8 @@
 # TODO
 
-## Before merging v2
+## Before release
 
 - [ ] Pick a new name. "glide" clashes with Glide.js. Rename the package, CLI command, README and repo together.
-- [ ] Merge PR #1 (`v2` → `main`). CI passes.
 
 ## Features
 
@@ -14,7 +13,7 @@
 
 ## Quality
 
-- [ ] e2e test: drive a demo deck in headless Chrome (HTML-in-Canvas flag on) and check for blank frames, one-frame blinks and console errors. Reuse the CDP screencast + brightness scripts used during development; keep them under `test/e2e/`.
+- [ ] e2e test: drive a demo deck in headless Chrome and check for blank frames, one-frame blinks and console errors. Reuse the CDP screencast + brightness scripts used during development; keep them under `test/e2e/`.
 - [ ] Run the CLI on Windows (`start` to open the browser, paths).
 
 ## Known issues
