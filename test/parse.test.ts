@@ -219,3 +219,15 @@ test("params by name win over words", (t) => {
   assert.deepEqual(r?.params, { direction: "left" });
   assert.deepEqual(resolveTransition({ name: "glitch", args: [], params: { amount: 2 } })?.params, { amount: 2 });
 });
+
+test("printSize", (t) => {
+  const warn = t.mock.method(console, "warn", () => {});
+  assert.deepEqual(parseFrontmatter("---\nprintSize: 960x540\n---\n").meta.printSize, { width: 960, height: 540 });
+  assert.deepEqual(parseFrontmatter("---\nprint_size: 1920 X 1080\n---\n").meta.printSize, { width: 1920, height: 1080 });
+  assert.equal(parseFrontmatter("---\ntitle: a\n---\n").meta.printSize, undefined);
+  assert.equal(warn.mock.callCount(), 0);
+  for (const bad of ["960", "0x540", "big", "960x540px"]) {
+    assert.equal(parseFrontmatter(`---\nprintSize: ${bad}\n---\n`).meta.printSize, undefined);
+  }
+  assert.equal(warn.mock.callCount(), 4);
+});

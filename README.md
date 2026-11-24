@@ -23,6 +23,7 @@ Requirements:
 ```
 $ glide slide.md                 # dev server with live reload (opens the browser)
 $ glide build -o out slide.md    # static HTML in ./out
+$ glide pdf slide.md             # PDF in ./slide.pdf (needs Chrome)
 ```
 
 Options:
@@ -32,11 +33,35 @@ Options:
 - `--no-open`: do not open the browser
 - `--no-gpu`: turn off WebGL transitions
 - `-t, --theme <name>`: theme (beats the frontmatter)
-- `-o, --out <dir>`: build output dir (default `./out`)
+- `-o, --out <path>`: build output dir (default `./out`), or the PDF file for `glide pdf` (default `./<name>.pdf`)
+- `--chrome <path>`: Chrome binary for `glide pdf`
 - `--export <dir>`: same as `glide build -o <dir>`
 
 The build output is self-contained (`index.html`, `glide.js`, `assets/`). It copies local files that the slides load (`img`, `video`, `audio`, `source`, `track`, `script`, `iframe`, `link`, `embed`, `object`, markdown images) into `assets/`. A copied HTML page (iframe) keeps its own relative links, so those files must be referenced from the markdown too or kept next to it by hand.
 It opens from `file://`, but without transitions (browsers treat each local file as cross-origin, so the canvas capture drops images). Serve the folder over http to get transitions.
+
+### PDF export
+
+`glide pdf slide.md` prints every slide as one page with headless Chrome (or Chromium / Edge). It looks for Chrome at `--chrome <path>`, then `CHROME_PATH`, then the usual install paths.
+
+The page size comes from the `printSize` frontmatter (alias `print_size`), in px. Default `1280x720`.
+
+```yaml
+---
+printSize: 960x540
+---
+```
+
+To print from the browser, press `⌘P` / `Ctrl+P` in the deck. glide swaps in the print view (every slide as a page), waits for images and fonts, then opens the Print dialog. The deck comes back on the same slide afterwards. File > Print in the menu also works, but images that have not loaded yet may be missing; use the key or `?print` instead.
+
+You can also open the deck with `?print` in the URL (e.g. `http://localhost:3000/?print`). That view stacks all slides as pages.
+
+Limits of print mode:
+
+- Slide `<script>`s do not run, so canvases drawn by scripts are blank.
+- Videos show their poster or first frame.
+- No transitions.
+- A slide taller than the page is scaled down to fit.
 
 ### As a library
 
@@ -84,7 +109,7 @@ header:
 ```
 
 - Slides split on `---` lines (ignored inside code fences).
-- Frontmatter keys: `title`, `theme`, `transition`, `duration` (seconds), `layout`, `css` (extra stylesheet, relative to the md), `header` (items shown at the top right), `transitions` (custom shaders, see [Custom transitions](#custom-transitions)).
+- Frontmatter keys: `title`, `theme`, `transition`, `duration` (seconds), `layout`, `css` (extra stylesheet, relative to the md), `header` (items shown at the top right), `printSize` (PDF page size, e.g. `960x540`), `transitions` (custom shaders, see [Custom transitions](#custom-transitions)).
 - Per-slide directives at the top of a slide: `<!-- transition: NAME ARGS -->`, `<!-- duration: N -->`, `<!-- layout: ... -->`, `<!-- theme: ... -->`, `<!-- live -->`, `<!-- gpu: false -->`. They override the frontmatter.
 - `|||` splits a `two-column` slide into left and right.
 - Raw HTML works, e.g. `<img src="cat.gif" class="center w-60">`. Utility classes: `center`, `w-20` `w-30` `w-40` `w-60` `w-70` `w-80` `w-100`.
@@ -108,6 +133,7 @@ header:
 - Touch: swipe left / right to go forward / back; tap the right / left side like a click. A vertical swipe scrolls a tall slide. A touch that moves more than 10 px is not a tap.
 - `f`: fullscreen (`Esc` exits)
 - `?`: show the keys; any key or click closes it
+- `⌘P` / `Ctrl+P`: print all slides, one per page (see [PDF export](#pdf-export)). Works even while a text field has focus.
 - Clicks on links, form controls, `canvas`, `video`, `audio`, `iframe`, `summary`, `label`, elements with `tabindex`, and anything inside `[data-glide-interactive]` do not turn the page, by click, tap or swipe. Neither does a drag (text selection, slider).
 - Keys go to a focused text field, slider or select, and `Space` / `Enter` to a focused button or link. Press `Esc` to give the keys back to the deck. Inside `[data-glide-interactive]`, the deck ignores all keys.
 

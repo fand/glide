@@ -9,6 +9,7 @@ glide v2 is a rewrite as a plain web app.
 - GPU transitions on [VFX-JS](https://github.com/fand/vfx-js) `addTransition` with HTML-in-Canvas, using presets from `@vfx-js/transitions`: `crossfade`, `swipe`, `zoom`, `zoom_blur`, `crosszoom`, `glitch_slide`, `glitch`, `datamosh`, `pixelsort`, `none`. Moving back plays the transition in reverse.
 - Transition params by name: a `transition:` block with `type`, `duration`, `ease` and params. `transitionDefs:` names blocks for reuse and lists custom GLSL shader files.
 - Interactive slides: slide `<script>`s run on mount, with `Glide.onUnmount()` for cleanup. Video, iframes, canvases (2D, WebGL, p5.js, three.js), forms and Web Components work; content the GPU stage cannot capture is shown as plain DOM.
+- PDF export: `glide pdf slide.md` prints one page per slide with headless Chrome. `?print` in the URL shows the same print view in the browser. Page size from the `printSize` frontmatter (default `1280x720`).
 - Themes (Catppuccin and the v1 color pairs), layouts (`normal`, `center`, `two-column`), header items, page counter, keyboard / click / touch navigation, fullscreen (`f`), key help (`?`).
 - Requirements: Node.js 20+ for the CLI. GPU transitions need Chrome 157+ (HTML-in-Canvas); other browsers use a slower fallback, and `--no-gpu` turns transitions off.
 

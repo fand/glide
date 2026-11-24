@@ -9,11 +9,12 @@ export type {
 } from "./deck.ts";
 export { parse } from "./parse.ts";
 export type { ParsedDeck, Slide } from "./parse.ts";
-export { DEFAULT_TRANSITION, DEFAULT_DURATION } from "./frontmatter.ts";
+export { DEFAULT_TRANSITION, DEFAULT_DURATION, DEFAULT_PRINT_SIZE } from "./frontmatter.ts";
 export type {
   Frontmatter,
   HeaderItem,
   Layout,
+  PrintSize,
   Transition,
 } from "./frontmatter.ts";
 export { registerTransition } from "./transitions/index.ts";

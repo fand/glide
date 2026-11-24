@@ -6,6 +6,7 @@ import hljsCss from "highlight.js/styles/github-dark.css?inline";
 import { attachTransitions, type Transitions } from "./stage.ts";
 import { customTransitions } from "./transitions/custom.ts";
 import { mountScripts, unmountScripts } from "./scripts.ts";
+import { DEFAULT_PRINT_SIZE, type Frontmatter } from "./frontmatter.ts";
 
 export const DEFAULT_THEME = "mocha";
 
@@ -25,6 +26,12 @@ export type RunOpts = {
    * `vec4 transition(vec2 uv, float t)`. They shadow built-ins of the same name.
    */
   shaders?: Record<string, string>;
+  /**
+   * Print mode: stack every slide as a page for printing / PDF export.
+   * No transitions, input handlers or slide scripts. Default: true if the
+   * URL has `?print`.
+   */
+  print?: boolean;
 };
 
 export type Direction = 1 | -1;
@@ -149,6 +156,7 @@ const HELP_HTML = `<div class="panel">
 <dt>Home / End</dt><dd>First / last slide</dd>
 <dt>↓ j / ↑ k</dt><dd>Scroll a tall slide</dd>
 <dt>f</dt><dd>Fullscreen</dd>
+<dt>⌘P / Ctrl+P</dt><dd>Print all slides</dd>
 <dt>?</dt><dd>This help</dd>
 <dt>Esc</dt><dd>Leave a focused control, exit fullscreen</dd>
 </dl>
@@ -222,6 +230,148 @@ function readHash(): number | null {
   return m ? Number(m[1]) - 1 : null;
 }
 
+/**
+ * Shrink the whole section with `transform: scale()` until it fits its page.
+ * The box grows by 1/scale first, so the scaled result fills the page.
+ */
+function fitPage(section: HTMLElement, w: number, h: number): void {
+  section.style.removeProperty("width");
+  section.style.removeProperty("height");
+  section.style.removeProperty("transform");
+  fitCode(section);
+  let scale = 1;
+  for (let k = 0; k < 4 && section.scrollHeight > section.clientHeight + 1; k++) {
+    scale *= section.clientHeight / section.scrollHeight;
+    section.style.width = `${w / scale}px`;
+    section.style.height = `${h / scale}px`;
+    section.style.transform = `scale(${scale})`;
+  }
+}
+
+type PrintArgs = {
+  meta: Frontmatter;
+  slides: Slide[];
+  root: HTMLElement;
+  deckTheme: string;
+  cssLink: HTMLLinkElement | null;
+  buildSection: (i: number) => HTMLElement;
+  buildHeader: () => HTMLElement;
+};
+
+type PrintView = {
+  el: HTMLElement;
+  /** Resolves when images, fonts and the deck css have settled and pages are fitted. */
+  ready: Promise<void>;
+  destroy(): void;
+};
+
+/**
+ * Mount every slide as one fixed-size page, stacked, into `a.root`.
+ * While mounted, `html.glide-print` hides a live deck (#glide) in the same page.
+ */
+function mountPrintView(a: PrintArgs): PrintView {
+  const { width: w, height: h } = a.meta.printSize ?? DEFAULT_PRINT_SIZE;
+  // Same formula as `html { font-size }` in slide.css, but for the page size.
+  const fontSize = Math.min(w * 0.022, h * 0.039);
+  const html = document.documentElement;
+  const scroll = { x: window.scrollX, y: window.scrollY };
+
+  const style = el("style", { id: "glide-print-style" });
+  style.textContent = `@page { size: ${w}px ${h}px; margin: 0; }
+html.glide-print { font-size: ${fontSize}px; }
+.print-page { width: ${w}px; height: ${h}px; }
+.print-page .slide :is(img, video) { max-height: ${h * 0.6}px; }`;
+  document.head.appendChild(style);
+  html.classList.add("glide-print");
+
+  const view = el("div", { id: "glide-print", class: `theme-${a.deckTheme}` });
+  const sections: HTMLElement[] = [];
+  a.slides.forEach((s, i) => {
+    const page = el("div", { class: "print-page" });
+    const section = a.buildSection(i);
+    const overlay = el("div", { class: `print-overlay theme-${s.theme ?? a.deckTheme}` });
+    if (a.meta.header.length > 0) {
+      overlay.appendChild(a.buildHeader());
+    }
+    const counter = el("div", { class: "counter" });
+    counter.textContent = `${i + 1} / ${a.slides.length}`;
+    overlay.appendChild(counter);
+    page.append(section, overlay);
+    view.appendChild(page);
+    sections.push(section);
+  });
+  a.root.appendChild(view);
+
+  const fitAll = () => sections.forEach((s) => fitPage(s, w, h));
+  fitAll();
+
+  const waits: Promise<unknown>[] = [document.fonts.ready];
+  for (const img of view.querySelectorAll("img")) {
+    img.loading = "eager";
+    waits.push(img.decode());
+  }
+  const link = a.cssLink;
+  if (link && !link.sheet) {
+    waits.push(
+      new Promise((res) => {
+        link.addEventListener("load", res, { once: true });
+        link.addEventListener("error", res, { once: true });
+      }),
+    );
+  }
+  let destroyed = false;
+  const ready = Promise.allSettled(waits).then(() => {
+    if (!destroyed) {
+      fitAll();
+    }
+  });
+
+  return {
+    el: view,
+    ready,
+    destroy() {
+      destroyed = true;
+      view.remove();
+      style.remove();
+      html.classList.remove("glide-print");
+      window.scrollTo(scroll.x, scroll.y);
+    },
+  };
+}
+
+/** Print mode (`?print`): only the print view, no live deck. */
+function runPrint(a: PrintArgs): Deck {
+  const view = mountPrintView(a);
+  let destroyed = false;
+  void view.ready.then(() => {
+    if (!destroyed) {
+      document.documentElement.dataset.glideReady = "1";
+    }
+  });
+
+  const noop = () => {};
+  return {
+    meta: a.meta,
+    slides: a.slides,
+    el: view.el,
+    stage: view.el,
+    current: 0,
+    length: a.slides.length,
+    next: noop,
+    prev: noop,
+    goto: noop,
+    setSwapHandler: noop,
+    setPlainDom: noop,
+    domLayer: el("div"),
+    destroy() {
+      destroyed = true;
+      view.destroy();
+      a.cssLink?.remove();
+      delete document.documentElement.dataset.glideReady;
+    },
+  };
+}
+
 export function run(md: string, opts: RunOpts = {}): Deck {
   const { meta, slides } = parse(md);
   const root = opts.root ?? document.body;
@@ -250,40 +400,6 @@ export function run(md: string, opts: RunOpts = {}): Deck {
     };
   });
 
-  const glide = el("div", { id: "glide", class: `theme-${deckTheme}` });
-  const stage = el("div", { id: "stage" });
-  const domLayer = el("div", { id: "stage-dom" });
-  const overlay = el("div", { id: "overlay", class: `theme-${deckTheme}` });
-  const header = el("div", { class: "header" });
-  const counter = el("div", { class: "counter" });
-
-  for (const item of meta.header) {
-    const node = item.url
-      ? el("a", { href: item.url, target: "_blank", rel: "noopener" })
-      : el("span");
-    node.textContent = item.text;
-    header.appendChild(node);
-  }
-  if (meta.header.length > 0) {
-    overlay.appendChild(header);
-  }
-  overlay.appendChild(counter);
-  const help = el("div", { id: "glide-help", role: "dialog", "aria-label": "Keyboard shortcuts" });
-  help.innerHTML = HELP_HTML;
-  help.hidden = true;
-  glide.append(stage, domLayer, overlay, help);
-  root.appendChild(glide);
-
-  const preloaded = new Set<string>();
-  function preload(i: number): void {
-    for (const src of rendered[i]?.images ?? []) {
-      if (!preloaded.has(src)) {
-        preloaded.add(src);
-        new Image().src = src;
-      }
-    }
-  }
-
   function buildSection(i: number): HTMLElement {
     const s: Slide = slides[i];
     const r = rendered[i];
@@ -302,6 +418,50 @@ export function run(md: string, opts: RunOpts = {}): Deck {
       section.innerHTML = r.html;
     }
     return section;
+  }
+
+  function buildHeader(): HTMLElement {
+    const header = el("div", { class: "header" });
+    for (const item of meta.header) {
+      const node = item.url
+        ? el("a", { href: item.url, target: "_blank", rel: "noopener" })
+        : el("span");
+      node.textContent = item.text;
+      header.appendChild(node);
+    }
+    return header;
+  }
+
+  const printArgs: PrintArgs = { meta, slides, root, deckTheme, cssLink, buildSection, buildHeader };
+  const print = opts.print ?? new URLSearchParams(location.search).has("print");
+  if (print) {
+    return runPrint(printArgs);
+  }
+
+  const glide = el("div", { id: "glide", class: `theme-${deckTheme}` });
+  const stage = el("div", { id: "stage" });
+  const domLayer = el("div", { id: "stage-dom" });
+  const overlay = el("div", { id: "overlay", class: `theme-${deckTheme}` });
+  const counter = el("div", { class: "counter" });
+
+  if (meta.header.length > 0) {
+    overlay.appendChild(buildHeader());
+  }
+  overlay.appendChild(counter);
+  const help = el("div", { id: "glide-help", role: "dialog", "aria-label": "Keyboard shortcuts" });
+  help.innerHTML = HELP_HTML;
+  help.hidden = true;
+  glide.append(stage, domLayer, overlay, help);
+  root.appendChild(glide);
+
+  const preloaded = new Set<string>();
+  function preload(i: number): void {
+    for (const src of rendered[i]?.images ?? []) {
+      if (!preloaded.has(src)) {
+        preloaded.add(src);
+        new Image().src = src;
+      }
+    }
   }
 
   let current = -1;
@@ -565,6 +725,40 @@ export function run(md: string, opts: RunOpts = {}): Deck {
     }
   }
 
+  // Print all slides, not just the screen: swap in the print view while printing.
+  // The live deck stays mounted (only hidden), so its slide, scripts and video keep their state.
+  let printView: PrintView | null = null;
+  function hidePrintView(): void {
+    printView?.destroy();
+    printView = null;
+  }
+  function onPrintKey(e: KeyboardEvent): void {
+    if (!(e.metaKey || e.ctrlKey) || e.shiftKey || e.altKey || e.key.toLowerCase() !== "p") {
+      return;
+    }
+    e.preventDefault();
+    if (printView) {
+      // Already preparing or printing.
+      return;
+    }
+    const view = mountPrintView(printArgs);
+    printView = view;
+    void view.ready.then(() => {
+      if (printView === view) {
+        window.print();
+      }
+    });
+  }
+  // File > Print from the menu: build the view right away. Images that have
+  // not loaded yet may be missing.
+  function onBeforePrint(): void {
+    printView ??= mountPrintView(printArgs);
+  }
+
+  // Capture, so this runs before slide handlers and focused fields.
+  window.addEventListener("keydown", onPrintKey, { capture: true });
+  window.addEventListener("beforeprint", onBeforePrint);
+  window.addEventListener("afterprint", hidePrintView);
   window.addEventListener("keydown", onKey);
   window.addEventListener("resize", onResize);
   glide.addEventListener("pointerdown", onPointerDown);
@@ -615,6 +809,10 @@ export function run(md: string, opts: RunOpts = {}): Deck {
         unmountScripts(mounted);
       }
       transitions?.destroy();
+      window.removeEventListener("keydown", onPrintKey, { capture: true });
+      window.removeEventListener("beforeprint", onBeforePrint);
+      window.removeEventListener("afterprint", hidePrintView);
+      hidePrintView();
       window.removeEventListener("keydown", onKey);
       window.removeEventListener("resize", onResize);
       window.removeEventListener("hashchange", onHashChange);
