@@ -168,6 +168,7 @@ export async function build(opts: BuildOpts): Promise<void> {
     renderHtml({
       md,
       title,
+      lang: meta.lang,
       theme: opts.theme,
       transitions: opts.transitions,
       shaders: await loadShaders(mdPath, md),

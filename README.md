@@ -109,7 +109,7 @@ header:
 ```
 
 - Slides split on `---` lines (ignored inside code fences).
-- Frontmatter keys: `title`, `theme`, `transition`, `duration` (seconds), `layout`, `css` (extra stylesheet, relative to the md), `header` (items shown at the top right), `printSize` (PDF page size, e.g. `960x540`), `transitions` (custom shaders, see [Custom transitions](#custom-transitions)).
+- Frontmatter keys: `title`, `lang` (HTML `lang`, e.g. `ja`; default `en`), `theme`, `transition`, `duration` (seconds), `layout`, `css` (extra stylesheet, relative to the md), `header` (items shown at the top right), `printSize` (PDF page size, e.g. `960x540`), `transitions` (custom shaders, see [Custom transitions](#custom-transitions)).
 - Per-slide directives at the top of a slide: `<!-- transition: NAME ARGS -->`, `<!-- duration: N -->`, `<!-- layout: ... -->`, `<!-- theme: ... -->`, `<!-- live -->`, `<!-- gpu: false -->`. They override the frontmatter.
 - `|||` splits a `two-column` slide into left and right.
 - Raw HTML works, e.g. `<img src="cat.gif" class="center w-60">`. Utility classes: `center`, `w-20` `w-30` `w-40` `w-60` `w-70` `w-80` `w-100`.

@@ -19,6 +19,8 @@ export type PrintSize = { width: number; height: number };
 
 export type Frontmatter = {
   title?: string;
+  /** HTML `lang`, e.g. `ja`. */
+  lang?: string;
   theme?: string;
   transition?: Transition;
   duration?: number;
@@ -205,6 +207,9 @@ export function parseFrontmatter(md: string): { meta: Frontmatter; body: string 
     switch (key) {
       case "title":
         meta.title = value;
+        break;
+      case "lang":
+        meta.lang = value || undefined;
         break;
       case "theme":
         meta.theme = value || undefined;

@@ -383,6 +383,9 @@ export function run(md: string, opts: RunOpts = {}): Deck {
   if (meta.title && !document.title) {
     document.title = meta.title;
   }
+  if (meta.lang) {
+    document.documentElement.lang = meta.lang;
+  }
 
   let cssLink: HTMLLinkElement | null = null;
   if (meta.css) {

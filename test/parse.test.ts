@@ -3,13 +3,14 @@ import assert from "node:assert/strict";
 import { parse } from "../src/runtime/parse.ts";
 import { resolveTransition } from "../src/runtime/transitions/index.ts";
 import { parseFrontmatter } from "../src/runtime/frontmatter.ts";
-import { escapeScriptText, unescapeScriptText } from "../src/cli/template.ts";
+import { escapeScriptText, renderHtml, unescapeScriptText } from "../src/cli/template.ts";
 
 test("frontmatter", () => {
   const { meta, body } = parseFrontmatter(
     [
       "---",
       "title: My talk",
+      "lang: ja",
       "theme: latte",
       "transition: swipe left",
       "duration: 1.5",
@@ -24,6 +25,7 @@ test("frontmatter", () => {
     ].join("\n"),
   );
   assert.equal(meta.title, "My talk");
+  assert.equal(meta.lang, "ja");
   assert.equal(meta.theme, "latte");
   assert.deepEqual(meta.transition, { name: "swipe", args: ["left"] });
   assert.equal(meta.duration, 1.5);
@@ -230,4 +232,9 @@ test("printSize", (t) => {
     assert.equal(parseFrontmatter(`---\nprintSize: ${bad}\n---\n`).meta.printSize, undefined);
   }
   assert.equal(warn.mock.callCount(), 4);
+});
+
+test("html lang", () => {
+  assert.match(renderHtml({ md: "", title: "t" }), /<html lang="en">/);
+  assert.match(renderHtml({ md: "", title: "t", lang: "ja" }), /<html lang="ja">/);
 });

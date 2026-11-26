@@ -1,6 +1,8 @@
 export type TemplateOpts = {
   md: string;
   title: string;
+  /** HTML `lang`. Default `en`. */
+  lang?: string;
   theme?: string;
   baseUrl?: string;
   liveReload?: boolean;
@@ -67,7 +69,7 @@ export function renderHtml(opts: TemplateOpts): string {
   const runOptsJs = serializeForScript(runOpts);
 
   return `<!doctype html>
-<html lang="en">
+<html lang="${escapeHtml(opts.lang || "en")}">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />

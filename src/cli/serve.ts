@@ -111,11 +111,13 @@ export async function startServer(opts: ServerOpts): Promise<Server> {
     try {
       if (p === "/" || p === "/index.html") {
         const md = await fs.promises.readFile(mdPath, "utf8");
-        const title = parseFrontmatter(md).meta.title ?? path.basename(mdPath, ".md");
+        const { meta } = parseFrontmatter(md);
+        const title = meta.title ?? path.basename(mdPath, ".md");
         const shaders = await loadShaders(mdPath, md);
         send(res, 200, renderHtml({
             md,
             title,
+            lang: meta.lang,
             theme: opts.theme,
             transitions: opts.transitions,
             shaders,
