@@ -238,3 +238,26 @@ test("html lang", () => {
   assert.match(renderHtml({ md: "", title: "t" }), /<html lang="en">/);
   assert.match(renderHtml({ md: "", title: "t", lang: "ja" }), /<html lang="ja">/);
 });
+
+test("section carries over to later slides", () => {
+  const md = [
+    "# A",
+    "---",
+    "<!-- section: Part 1 -->",
+    "# B",
+    "---",
+    "# C",
+    "---",
+    "<!-- section: 第2部 DOMの外側 -->",
+    "# D",
+    "---",
+    "<!-- section -->",
+    "# E",
+  ].join("\n");
+  const { slides } = parse(md);
+  assert.deepEqual(
+    slides.map((s) => s.section),
+    [undefined, "Part 1", "Part 1", "第2部 DOMの外側", undefined],
+  );
+  assert.deepEqual(slides[1].data, {});
+});

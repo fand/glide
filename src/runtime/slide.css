@@ -234,6 +234,13 @@ body {
   color: var(--fg);
 }
 
+#overlay .section-label,
+.print-overlay .section-label {
+  position: absolute;
+  left: 1rem;
+  bottom: 0.8rem;
+}
+
 #overlay .counter,
 .print-overlay .counter {
   position: absolute;

@@ -27,6 +27,8 @@ export type Slide = {
   live?: boolean;
   /** false: show as plain DOM above the GPU stage (no capture, no transition). Unset = automatic. */
   gpu?: boolean;
+  /** Section name from `<!-- section: ... -->`. Later slides keep it until the next one. */
+  section?: string;
   data: Record<string, string | true>;
 };
 
@@ -138,6 +140,7 @@ export function parse(md: string): ParsedDeck {
   const chunks = splitOutsideFences(body, "---");
 
   const slides: Slide[] = [];
+  let section: string | undefined;
   for (const chunk of chunks) {
     const { directives, body: src } = parseDirectives(chunk);
     if (src.trim() === "" && Object.keys(directives).length === 0) {
@@ -181,11 +184,16 @@ export function parse(md: string): ParsedDeck {
         case "no-gpu":
           slide.gpu = false;
           break;
+        case "section":
+          // `<!-- section -->` with no name clears it.
+          section = str || undefined;
+          break;
         default:
           slide.data[key] = value;
       }
     }
 
+    slide.section = section;
     slide.transition = expandTransition(slide.transition, meta.transitionDefs);
     // Slide directive, then the transition's own, then the deck's.
     slide.duration = duration ?? slide.transition.duration ?? meta.duration ?? DEFAULT_DURATION;

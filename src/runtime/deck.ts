@@ -293,6 +293,11 @@ html.glide-print { font-size: ${fontSize}px; }
     if (a.meta.header.length > 0) {
       overlay.appendChild(a.buildHeader());
     }
+    if (s.section) {
+      const label = el("div", { class: "section-label" });
+      label.textContent = s.section;
+      overlay.appendChild(label);
+    }
     const counter = el("div", { class: "counter" });
     counter.textContent = `${i + 1} / ${a.slides.length}`;
     overlay.appendChild(counter);
@@ -411,6 +416,9 @@ export function run(md: string, opts: RunOpts = {}): Deck {
       class: `slide layout-${s.layout} theme-${theme}`,
       "data-index": String(i),
     });
+    if (s.section !== undefined) {
+      section.dataset.section = s.section;
+    }
     if (r.htmlRight !== undefined) {
       const l = el("div", { class: "col" });
       const rr = el("div", { class: "col" });
@@ -446,11 +454,12 @@ export function run(md: string, opts: RunOpts = {}): Deck {
   const domLayer = el("div", { id: "stage-dom" });
   const overlay = el("div", { id: "overlay", class: `theme-${deckTheme}` });
   const counter = el("div", { class: "counter" });
+  const sectionLabel = el("div", { class: "section-label" });
 
   if (meta.header.length > 0) {
     overlay.appendChild(buildHeader());
   }
-  overlay.appendChild(counter);
+  overlay.append(sectionLabel, counter);
   const help = el("div", { id: "glide-help", role: "dialog", "aria-label": "Keyboard shortcuts" });
   help.innerHTML = HELP_HTML;
   help.hidden = true;
@@ -500,6 +509,14 @@ export function run(md: string, opts: RunOpts = {}): Deck {
       }
     }
     counter.textContent = `${i + 1} / ${slides.length}`;
+    // In the overlay, so the label does not go through the transition.
+    const name = slides[i].section;
+    sectionLabel.textContent = name ?? "";
+    if (name === undefined) {
+      delete glide.dataset.section;
+    } else {
+      glide.dataset.section = name;
+    }
     preload(i + 1);
     preload(i - 1);
     return section;
