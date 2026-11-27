@@ -109,7 +109,7 @@ header:
 ```
 
 - Slides split on `---` lines (ignored inside code fences).
-- Frontmatter keys: `title`, `lang` (HTML `lang`, e.g. `ja`; default `en`), `theme`, `transition`, `duration` (seconds), `layout`, `css` (extra stylesheet, relative to the md), `header` (items shown at the top right), `printSize` (PDF page size, e.g. `960x540`), `transitions` (custom shaders, see [Custom transitions](#custom-transitions)).
+- Frontmatter keys: `title`, `lang` (HTML `lang`, e.g. `ja`; default `en`), `theme`, `transition`, `duration` (seconds), `layout`, `css` (extra stylesheet, relative to the md), `script` (scripts run once at deck start, see [Deck scripts](#deck-scripts)), `header` (items shown at the top right), `printSize` (PDF page size, e.g. `960x540`), `transitions` (custom shaders, see [Custom transitions](#custom-transitions)).
 - Per-slide directives at the top of a slide: `<!-- transition: NAME ARGS -->`, `<!-- duration: N -->`, `<!-- layout: ... -->`, `<!-- theme: ... -->`, `<!-- live -->`, `<!-- gpu: false -->`. They override the frontmatter.
 - `<!-- section: NAME -->` names a section. The slide and every slide after it get `data-section="NAME"` on their `<section class="slide">`, until the next `section` directive. `<!-- section -->` with no name clears it. The name shows at the bottom left (`.section-label`), outside the transition. `#glide` also gets `data-section` for the current slide.
 - `|||` splits a `two-column` slide into left and right.
@@ -163,6 +163,33 @@ Find your slide and clean up when it leaves:
 ```
 
 `Glide.currentSlide()` and `Glide.onUnmount()` work in classic and module scripts. With the npm package, import `currentSlide` and `onUnmount` instead. The section also fires `glide:mount` (after its scripts start) and `glide:unmount` (before it is removed). With a transition, the old slide is unmounted after its last frame has been captured.
+
+### Deck scripts
+
+`script:` in the frontmatter runs files once for the whole deck, whatever slide you open first. Paths are relative to the md. Give one path or a list:
+
+```yaml
+script:
+  - ./bg.js
+  - ./bg-sync.mjs
+```
+
+- They run in order, after the deck is in the DOM, in normal and print mode (`?print`).
+- `.js` loads as a classic script. Use `window.glide` for the deck.
+- `.mjs` loads as a module. If its default export is a function, glide calls it with the deck. A returned function runs on `deck.destroy()`.
+- Module scripts do not load on `file://`. Serve the folder over http.
+- `glide build` copies them like `css:`.
+
+```js
+// bg-sync.mjs
+/** @param {import("glide").Deck} deck */
+export default function (deck) {
+  if (deck.print) return;                      // deck.el is #glide-print in print mode
+  const onChange = (e) => { /* e.detail.to is the new slide index */ };
+  deck.el.addEventListener("glide:change", onChange);
+  return () => deck.el.removeEventListener("glide:change", onChange);
+}
+```
 
 ### What the GPU stage can show
 

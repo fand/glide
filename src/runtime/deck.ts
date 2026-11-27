@@ -66,6 +66,8 @@ export type Deck = ParsedDeck & {
   readonly length: number;
   readonly el: HTMLElement;
   readonly stage: HTMLElement;
+  /** True in print mode (`?print`): every slide is shown, navigation does nothing. */
+  readonly print: boolean;
   next(): void;
   prev(): void;
   goto(index: number): void;
@@ -360,6 +362,7 @@ function runPrint(a: PrintArgs): Deck {
     slides: a.slides,
     el: view.el,
     stage: view.el,
+    print: true,
     current: 0,
     length: a.slides.length,
     next: noop,
@@ -446,7 +449,7 @@ export function run(md: string, opts: RunOpts = {}): Deck {
   const printArgs: PrintArgs = { meta, slides, root, deckTheme, cssLink, buildSection, buildHeader };
   const print = opts.print ?? new URLSearchParams(location.search).has("print");
   if (print) {
-    return runPrint(printArgs);
+    return withScripts(runPrint(printArgs), meta.scripts, base);
   }
 
   const glide = el("div", { id: "glide", class: `theme-${deckTheme}` });
@@ -807,6 +810,7 @@ export function run(md: string, opts: RunOpts = {}): Deck {
     slides,
     el: glide,
     stage,
+    print: false,
     get current() {
       return current;
     },
@@ -859,5 +863,79 @@ export function run(md: string, opts: RunOpts = {}): Deck {
     );
   }
 
+  return withScripts(deck, meta.scripts, base);
+}
+
+/** A deck script module's default export. The returned function runs on `deck.destroy()`. */
+export type DeckScript = (deck: Deck) => void | (() => void) | Promise<void | (() => void)>;
+
+/**
+ * Run the frontmatter `script` files once, in order, after the deck is in the DOM.
+ * `.mjs` loads as a module; if its default export is a function, call it with the deck.
+ * Other files load as classic scripts.
+ */
+function withScripts(deck: Deck, srcs: string[], base: URL): Deck {
+  if (srcs.length === 0) {
+    return deck;
+  }
+  let destroyed = false;
+  const els: HTMLScriptElement[] = [];
+  const cleanups: (() => void)[] = [];
+  const addCleanup = (fn: unknown) => {
+    if (typeof fn !== "function") {
+      return;
+    }
+    if (destroyed) {
+      fn();
+    } else {
+      cleanups.push(fn as () => void);
+    }
+  };
+  const load = async (src: string) => {
+    const url = new URL(src, base).href;
+    if (/\.mjs(?:[?#]|$)/i.test(src)) {
+      const mod = (await import(/* @vite-ignore */ url)) as { default?: unknown };
+      if (typeof mod.default === "function" && !destroyed) {
+        addCleanup(await (mod.default as DeckScript)(deck));
+      }
+      return;
+    }
+    await new Promise<void>((resolve, reject) => {
+      const s = document.createElement("script");
+      s.src = url;
+      s.onload = () => resolve();
+      s.onerror = () => reject(new Error(`failed to load ${url}`));
+      els.push(s);
+      document.head.appendChild(s);
+    });
+  };
+  (async () => {
+    for (const src of srcs) {
+      if (destroyed) {
+        return;
+      }
+      try {
+        await load(src);
+      } catch (e) {
+        console.error(`glide: script "${src}" failed:`, e);
+      }
+    }
+  })();
+
+  const destroy = deck.destroy;
+  deck.destroy = () => {
+    destroyed = true;
+    for (const fn of cleanups.splice(0)) {
+      try {
+        fn();
+      } catch (e) {
+        console.error("glide: script cleanup failed:", e);
+      }
+    }
+    for (const s of els) {
+      s.remove();
+    }
+    destroy.call(deck);
+  };
   return deck;
 }

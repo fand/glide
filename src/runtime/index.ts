@@ -6,6 +6,7 @@ export type {
   SwapContext,
   SwapHandler,
   ChangeDetail,
+  DeckScript,
 } from "./deck.ts";
 export { parse } from "./parse.ts";
 export type { ParsedDeck, Slide } from "./parse.ts";

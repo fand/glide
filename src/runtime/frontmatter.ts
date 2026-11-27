@@ -27,6 +27,8 @@ export type Frontmatter = {
   layout?: Layout;
   header: HeaderItem[];
   css?: string;
+  /** Scripts run once when the deck starts (also in print mode), relative to the markdown. `.mjs` loads as a module. */
+  scripts: string[];
   /** Page size in px for print mode (`printSize: 960x540`). Unset = DEFAULT_PRINT_SIZE. */
   printSize?: PrintSize;
   /** Custom shaders from `transitionDefs`: name -> path, relative to the markdown. */
@@ -125,7 +127,7 @@ const indentOf = (line: string) => line.length - line.trimStart().length;
  * `transitionDefs:`.
  */
 export function parseFrontmatter(md: string): { meta: Frontmatter; body: string } {
-  const meta: Frontmatter = { header: [], shaderFiles: {}, transitionDefs: {}, data: {} };
+  const meta: Frontmatter = { header: [], scripts: [], shaderFiles: {}, transitionDefs: {}, data: {} };
   const src = md.replace(/^﻿/, "").replace(/\r\n?/g, "\n");
   const m = src.match(/^\s*---[ \t]*\n([\s\S]*?\n)?---[ \t]*(?:\n|$)/);
   if (!m) {
@@ -133,6 +135,7 @@ export function parseFrontmatter(md: string): { meta: Frontmatter; body: string 
   }
 
   let inHeader = false;
+  let inScripts = false;
   // Lines of the `transition:` block.
   let transitionBlock: [string, string][] | null = null;
   // Inside `transitionDefs:`: the indent of its entries, and the def being read.
@@ -198,6 +201,16 @@ export function parseFrontmatter(md: string): { meta: Frontmatter; body: string 
       }
       inHeader = false;
     }
+    if (inScripts) {
+      if (t.startsWith("-")) {
+        const item = unquote(t.slice(1).trim());
+        if (item) {
+          meta.scripts.push(item);
+        }
+        continue;
+      }
+      inScripts = false;
+    }
     const kv = t.match(/^([\w-]+)\s*:\s*(.*)$/);
     if (!kv) {
       continue;
@@ -229,6 +242,14 @@ export function parseFrontmatter(md: string): { meta: Frontmatter; body: string 
         break;
       case "css":
         meta.css = value || undefined;
+        break;
+      case "script":
+      case "scripts":
+        if (value) {
+          meta.scripts.push(value);
+        } else {
+          inScripts = true;
+        }
         break;
       case "printSize":
       case "print_size":

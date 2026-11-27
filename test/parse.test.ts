@@ -46,7 +46,7 @@ test("inline header list", () => {
 
 test("no frontmatter", () => {
   const { meta, body } = parseFrontmatter("# Hi\n");
-  assert.deepEqual(meta, { header: [], shaderFiles: {}, transitionDefs: {}, data: {} });
+  assert.deepEqual(meta, { header: [], scripts: [], shaderFiles: {}, transitionDefs: {}, data: {} });
   assert.equal(body, "# Hi\n");
 });
 
@@ -260,4 +260,14 @@ test("section carries over to later slides", () => {
     [undefined, "Part 1", "Part 1", "第2部 DOMの外側", undefined],
   );
   assert.deepEqual(slides[1].data, {});
+});
+
+test("script frontmatter: scalar and list", () => {
+  assert.deepEqual(parseFrontmatter("---\nscript: ./bg.js\n---\n").meta.scripts, ["./bg.js"]);
+  const { meta } = parseFrontmatter(
+    ["---", "script:", "  - ./a.js", '  - "./b.mjs"', "title: T", "---", ""].join("\n"),
+  );
+  assert.deepEqual(meta.scripts, ["./a.js", "./b.mjs"]);
+  assert.equal(meta.title, "T");
+  assert.deepEqual(meta.data, {});
 });

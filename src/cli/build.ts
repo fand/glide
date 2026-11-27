@@ -83,6 +83,19 @@ export function rewriteMedia(md: string, fn: (url: string) => string): string {
     .join("");
 }
 
+/** Replace `key: VALUE` and `- VALUE` lines in the frontmatter block. */
+export function rewriteFrontmatterValue(md: string, from: string, to: string): string {
+  const m = md.match(/^\s*---[ \t]*\r?\n[\s\S]*?\n---[ \t]*(?:\r?\n|$)/);
+  if (!m) {
+    return md;
+  }
+  const fm = m[0].replace(
+    /^([ \t]*(?:[\w-]+[ \t]*:|-)[ \t]*["']?)(.*?)(["']?[ \t]*)$/gm,
+    (line, pre: string, v: string, post: string) => (v === from ? pre + to + post : line),
+  );
+  return fm + md.slice(m[0].length);
+}
+
 function toFsPath(baseDir: string, url: string): string {
   const clean = url.replace(/[?#].*$/, "");
   let decoded = clean;
@@ -142,23 +155,23 @@ export async function build(opts: BuildOpts): Promise<void> {
   });
 
   const { meta } = parseFrontmatter(md);
-  if (meta.css && isLocal(meta.css)) {
-    const src = toFsPath(baseDir, meta.css);
+  // Frontmatter files (css, scripts): keep the relative path when inside the
+  // md's folder, so url() in css and relative imports still work. Otherwise
+  // copy to assets/ and rewrite the value.
+  const fmFiles = [meta.css, ...meta.scripts].filter((v): v is string => !!v && isLocal(v));
+  for (const value of new Set(fmFiles)) {
+    const src = toFsPath(baseDir, value);
     const rel = path.relative(baseDir, src);
     if (!fs.existsSync(src)) {
-      console.warn(`warning: missing css '${path.relative(process.cwd(), src)}'`);
+      console.warn(`warning: missing file '${path.relative(process.cwd(), src)}'`);
     } else if (!rel.startsWith("..") && !path.isAbsolute(rel)) {
-      // Keep the relative path so url() references inside the css still work.
       await fs.promises.mkdir(path.dirname(path.join(outDir, rel)), { recursive: true });
       await fs.promises.copyFile(src, path.join(outDir, rel));
     } else {
       const name = assetName(src);
       await fs.promises.mkdir(assetsDir, { recursive: true });
       await fs.promises.copyFile(src, path.join(assetsDir, name));
-      const css = meta.css;
-      md = md.replace(/^(\s*css\s*:\s*["']?)(.*?)(["']?\s*)$/m, (line, pre: string, v: string, post: string) =>
-        v === css ? `${pre}./assets/${name}${post}` : line,
-      );
+      md = rewriteFrontmatterValue(md, value, `./assets/${name}`);
     }
   }
 

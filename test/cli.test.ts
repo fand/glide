@@ -4,7 +4,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { resolveStatic } from "../src/cli/serve.ts";
-import { rewriteMedia } from "../src/cli/build.ts";
+import { rewriteFrontmatterValue, rewriteMedia } from "../src/cli/build.ts";
 import { findChrome } from "../src/cli/pdf.ts";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
@@ -76,5 +76,30 @@ test("glide pdf: one page per slide", { skip: !chrome ? "Chrome not found" : !fs
   assert.equal(pdf.match(/\/Type\s*\/Page(?!s)/g)?.length, 3);
   // 640x360 px = 480x270 pt.
   assert.match(pdf, /\/MediaBox\s*\[0 0 480 270\]/);
+  fs.rmSync(tmp, { recursive: true });
+});
+
+test("rewriteFrontmatterValue only touches the frontmatter", () => {
+  const md = "---\ncss: ../a.css\nscript:\n  - '../b.js'\n---\n- ../b.js\n";
+  const out = rewriteFrontmatterValue(rewriteFrontmatterValue(md, "../a.css", "./assets/a.css"), "../b.js", "./assets/b.js");
+  assert.equal(out, "---\ncss: ./assets/a.css\nscript:\n  - './assets/b.js'\n---\n- ../b.js\n");
+});
+
+test("glide build copies frontmatter scripts", { skip: !fs.existsSync(cli) ? "run pnpm build first" : false }, () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "glide-build-"));
+  const dir = path.join(tmp, "deck");
+  fs.mkdirSync(path.join(dir, "js"), { recursive: true });
+  fs.writeFileSync(path.join(dir, "js", "in.js"), "1");
+  fs.writeFileSync(path.join(tmp, "out.mjs"), "2");
+  const md = path.join(dir, "deck.md");
+  fs.writeFileSync(md, "---\nscript:\n  - ./js/in.js\n  - ../out.mjs\n---\n# Hi\n");
+  const out = path.join(tmp, "dist");
+  const r = spawnSync(process.execPath, [cli, "build", "-o", out, md], { encoding: "utf8" });
+  assert.equal(r.status, 0, r.stderr);
+  assert.ok(fs.existsSync(path.join(out, "js", "in.js")));
+  assert.ok(fs.existsSync(path.join(out, "assets", "out.mjs")));
+  const html = fs.readFileSync(path.join(out, "index.html"), "utf8");
+  assert.match(html, /- \.\/js\/in\.js/);
+  assert.match(html, /- \.\/assets\/out\.mjs/);
   fs.rmSync(tmp, { recursive: true });
 });
